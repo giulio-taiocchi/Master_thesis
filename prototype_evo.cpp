@@ -9,20 +9,22 @@ using namespace std;
 
 int main() 
 {
-    // integration in time //
     
-    // setup of the fields and their initial condition in an domain=[dmin,dmax], after a h1-discretization
+    
+    // setup of the fields and their initial condition in an domain=[dmin,dmax]
     
     double dmin=0, dmax=5;
     //int n_point = 500;
     double h1 = 0.01, h2=h1/2, h3=h1/4;
+    
+    /*
     std::vector< std::vector<double> > fields_vect1;
     std::vector< std::vector<double> > fields_vect2;
     std::vector< std::vector<double> > fields_vect3;
     std::vector< std::vector<double> > diff1;
     std::vector< std::vector<double> > diff2;
     std::vector< std::vector<double> > diff3;
-
+    */
     
     // initial condition //
     
@@ -33,7 +35,7 @@ int main()
     
     
     std::vector<double> parameters_ic;
-    parameters_ic.push_back(10);
+    parameters_ic.push_back(5);
     
     initialize_fields(fields_vect1,dmin,dmax,h1,initial_conditions,parameters_ic);
     initialize_fields(fields_vect2,dmin,dmax,h2,initial_conditions,parameters_ic);
@@ -44,7 +46,7 @@ int main()
     // setup of the diffential operator functions of the specific differential equation
     std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int ) > R_vector;
     //R_vector.push_back(&advection_eq_right_going);
-    R_vector.push_back(&wave_eq_spherical_PI);
+    R_vector.push_back(&model1_PI);
     R_vector.push_back(&wave_eq_PHI);
     R_vector.push_back(&wave_eq_function);
     
@@ -52,7 +54,7 @@ int main()
     // setup of the boundary conditions 
     std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int)> b_func;
     //b_func.push_back(&adv_boundaries_left);
-    b_func.push_back(&radiative_outer_boundaries_PI_we);
+    b_func.push_back(&radiative_outer_boundaries_PI_m1);
     b_func.push_back(&no_boundary_conditions_PHI);
     b_func.push_back(&no_boundary_conditions_phi);
     
@@ -71,7 +73,7 @@ int main()
     int gr = 1;
     
     // we open an output file in order to write the name of the output files
-    string file_path = "wave_equation/data34/";
+    string file_path = "log_comp/data6/";
     ofstream names_file;
     names_file.open("./data/"+file_path+"names_file.csv");
     names_file <<"name\n";
@@ -88,16 +90,20 @@ int main()
     //Dx.push_back(first_der_fourth_order_centered);
     
     // --------- EVOLUTION OF THE FUNCTION --------- //
+    /*
     MOL_RK4(fields_vect1,&onestep_RK4_1,h1,parameters,dt1, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     MOL_RK4(fields_vect2,&onestep_RK4_1,h2,parameters,dt2, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     MOL_RK4(fields_vect3,&onestep_RK4_1,h3,parameters,dt3, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
+    */
+    
+    multiple_parameters_run(parameters_ic,initial_conditions,initialize_fields,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,&onestep_RK4_1,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,print_f,file_path,MOL_RK4);
     
     
     // Convergence tests are performed 
             
-    double self_test = self_conv_test(fields_vect1[0],fields_vect2[0],fields_vect3[0], h1, h2, &norm,&norm_of_diff );
+    //double self_test = self_conv_test(fields_vect1[0],fields_vect2[0],fields_vect3[0], h1, h2, &norm,&norm_of_diff );
     //double conv = conv_test(fields_vect1[0],fields_vect2[0],&line,&init_func,h1,h2, &norm, &norm_of_diff,dmin,dmax,h1,integration_interval);
-    cout<<"epsilon:"<<epsilon1<<endl;
+    //cout<<"epsilon:"<<epsilon1<<endl;
     
     /*
     // we open an output file in order to write the names of the "diff" files
