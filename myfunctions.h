@@ -4,28 +4,101 @@
 using namespace std;
 
 
-void multiple_parameters_run(std::vector<double> parameters_ic, std::vector<double(*)(double, std::vector<double> &)> initial_conditions, void (*initialize_fields)(std::vector<std::vector<double>> &,double ,double ,double ,std::vector<double(*)(double,std::vector<double> &)> &,std::vector<double> &), double dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, std::vector<double (*)(std::vector<double>,int,double)> & Dx ,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > & R_vector, std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > & b_func,  std::vector<double> & parameters, void(*one_step)(std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &), int gl,int gr,void (*ghost_point_extrapolation)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*artificial_diss_2)(double,int,std::vector<std::vector<double>> &,int,int,double,double), double epsilon1,void (*print_f)(std::vector< std::vector<double> > &, double , double , string, string), string file_path, 
+void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vector<double(*)(double, double)>& initial_conditions, void (*initialize_fields)(std::vector<std::vector<double>> &,double ,double ,double ,std::vector<double(*)(double,double)> &,double), double dmin, double dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, std::vector<double (*)(std::vector<double>,int,double)> & Dx ,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > & R_vector, std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > & b_func,  std::vector<double> & parameters, void (*one_step) (std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &), int gl,int gr,void (*ghost_point_extrapolation)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*artificial_diss_2)(double,int,std::vector<std::vector<double>> &,int,int,double,double), double epsilon1,void (*print_f)(std::vector< std::vector<double> > &, double , double , string, string), string file_path, 
 void (*MOL_RK4)(std::vector< std::vector<double> > &,void(*)(std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &)  , double , std::vector<double> &, double , double ,  double ,    double ,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &, double ,void (std::vector< std::vector<double> > &, double , double , string,string ),int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &,string ))
 {
-    for (int i=0;i<parameters_ic.size();i++)
+    ofstream myfile2;
+    myfile2.open (file_path+"name_of_file");
+    myfile2<<"names\n";
+    myfile2.close();
+    
+    for (int l=0;l<parameters_ic_vector.size();l++)
     {
         std::vector< std::vector<double> > fields_vect1;
-        std::vector< std::vector<double> > fields_vect1;
-        std::vector< std::vector<double> > fields_vect1;
+        std::vector< std::vector<double> > fields_vect2;
+        //std::vector< std::vector<double> > fields_vect3;
+        cout<<"\namplitude = "<<parameters_ic_vector[l]<<endl;
+        // initialize fields
         
-        initialize_fields(fields_vect1,dmin,dmax,h1,initial_conditions,parameters_ic);
-        initialize_fields(fields_vect2,dmin,dmax,h2,initial_conditions,parameters_ic);
-        initialize_fields(fields_vect3,dmin,dmax,h3,initial_conditions,parameters_ic);
+        
+        
+        initialize_fields(fields_vect1,dmin,dmax,h1,initial_conditions,parameters_ic_vector[l]);     
+        initialize_fields(fields_vect2,dmin,dmax,h1,initial_conditions,parameters_ic_vector[l]);
+        
+        
+        //initialize_fields(fields_vect2,dmin,dmax,h2,initial_conditions,parameters_ic_vector[l]);
+        //initialize_fields(fields_vect3,dmin,dmax,h3,initial_conditions,parameters_ic_vector[l]);
+        // setting the output variables
+        //cout<<"\n lun vec \n"<<endl;
+        string name_file = "ampl_"+to_string(parameters_ic_vector[l])+"_dx_"+to_string(h1)+".csv";
+        
+        myfile2.open (file_path+"name_of_file",ios::app);
+        myfile2<<file_path+name_file<<"\n";
+        myfile2.close();
+        
+        string complete_path = file_path+name_file;
+        ofstream myfile;
+        
+        myfile.open (complete_path);
+        myfile.close();
+        
+        MOL_RK4(fields_vect1,one_step,h1,parameters,dt1, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon1,Dx,complete_path);
+        
+
+        
+        MOL_RK4(fields_vect2,one_step,h1,parameters,dt1, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon1,Dx,complete_path);
+        
+        /*
+        MOL_RK4(fields_vect1,one_step,h2,parameters,dt2, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon1,Dx,complete_path);
+        MOL_RK4(fields_vect1,one_step,h3,parameters,dt3, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon1,Dx,complete_path);
+        */
         
         
     }
+    
 }
     
 
-
-void MOL_RK4(std::vector< std::vector<double> > &fields_vect,void(*one_step)(std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &)  , double dx, std::vector<double> &param, double dt, double interval,    double dmin,    double dmax,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > &R_vect,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &bc, double step_to_save,void print_f(std::vector< std::vector<double> > &, double , double , string,string ),int gl, int gr,void (*ghost_point_extrapolation)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*artificial_diss_2)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,std::vector<double (*)(std::vector<double>,int,double)> &Dx,string file_path)
+void MOL_RK4(std::vector< std::vector<double> > &fields_vect,void(*one_step)(std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &)  , double dx, std::vector<double> &param, double dt, double interval,    double dmin,    double dmax,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > &R_vect,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &bc, double step_to_save,void (*print_f)(std::vector< std::vector<double> > &, double , double , string,string ),int gl, int gr,void (*ghost_point_extrapolation)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*artificial_diss_2)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,std::vector<double (*)(std::vector<double>,int,double)> &Dx,string file_path)
 {   
     
+    
+    cout<<"--- Method of lines called ---\ndx = "<<dx<<"\ndt = "<<dt<<"\nDomain = ["<<dmin<<","<<dmax<<"]\nlast time objective :"<<interval<<"\n";
+    
+    
+    
+    int ns = interval / dt; // the RK will be called ns times
+    int m = (ns/step_to_save); // every m step the data are printed to a file
+    int counter = 0;
+    //ofstream myfile_times;
+    double last;
+    for (double t=0;t<interval+dt/1.5;t=t+dt) 
+    {        
+        
+        // we print to file only for some time
+        if ((counter%m)==0)
+        {
+            
+            //ofstream myfile;
+            //myfile.open (file_path, ios::app);
+            //myfile<<t<<"\n";
+            //myfile.close();
+            //cout<<"print the fields at time"<<t<<endl;
+            print_f(fields_vect,dmin,dx,file_path,file_path); // the print_f function is called
+            //cout<<t<<endl;
+        }
+        one_step(fields_vect,dmin,dmax,dx,param,dt,R_vect,bc,t,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon,Dx);
+        counter += 1;
+    last = t;
+    }
+    
+    cout<<"last time included:"<<last<<endl;
+    
+}
+
+// to use with print1
+void MOL_RK41(std::vector< std::vector<double> > &fields_vect,void(*one_step)(std::vector< std::vector<double> > &,double ,double ,double ,std::vector<double> &, double , std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double,int ) > &,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double,double, double , int,int, int,double,double,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &,double , int , int ,void (*)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,std::vector<double (*)(std::vector<double>,int,double)> &)  , double dx, std::vector<double> &param, double dt, double interval,    double dmin,    double dmax,std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int) > &R_vect,std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int) > &bc, double step_to_save,void (*print_f)(std::vector< std::vector<double> > &, double , double , string,string ),int gl, int gr,void (*ghost_point_extrapolation)(std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double ,double ),double (*artificial_diss_2)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,std::vector<double (*)(std::vector<double>,int,double)> &Dx,string file_path)
+{   
     cout<<"--- Method of lines called ---\ndx = "<<dx<<"\ndt = "<<dt<<"\nDomain = ["<<dmin<<","<<dmax<<"]\nlast time objective :"<<interval<<"\n";
     ofstream names_file;
     names_file.open("./data/"+file_path+"names_file.csv",ios::app);
@@ -34,7 +107,7 @@ void MOL_RK4(std::vector< std::vector<double> > &fields_vect,void(*one_step)(std
     int m = (ns/step_to_save); // every m step the data are printed to a file
     int counter = 0;
     //ofstream myfile_times;
-    string folder = "./data/"+file_path;
+    string folder = file_path;
     folder.append("dx_"+to_string(dx)+"_");
     double last;
     for (double t=0;t<interval+dt/1.5;t=t+dt) 
@@ -310,7 +383,7 @@ void onestep_RK4_1(std::vector< std::vector<double> > &fields_vect,double dmin,d
     
     
     std::vector< std::vector<double> > new_fields_vect;
-        
+
     for (int j=0; j <N; j++)
     {
         new_fields_vect.push_back(support);
@@ -321,7 +394,6 @@ void onestep_RK4_1(std::vector< std::vector<double> > &fields_vect,double dmin,d
     }    
     //cout<<"old "<<fields_vect[0].size()<<"new "<<new_fields_vect[0].size()<<endl;
     new_fields_vect.swap(fields_vect);
-    
 }
 
 /*
@@ -413,7 +485,8 @@ double wave_eq_PI(int ind_field,int ind_space,std::vector<std::vector<double>> &
     
 double wave_eq_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> &fields_vect,double dx,double dmin,std::vector<double> &param, double t,std::vector<double (*)(std::vector<double>,int,double)> &Dx,double (*artificial_diss)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,int ord,double dt, int gl)
 {
-    return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx)+artificial_diss(epsilon,ord,fields_vect,ind_field,ind_space,dx,dt));
+    //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
+    return (Dx[0](fields_vect[0],ind_space,dx)+artificial_diss(epsilon,ord,fields_vect,ind_field,ind_space,dx,dt));
     //return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx));
 }
 
@@ -440,6 +513,7 @@ double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> &f
 {
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
+    //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
     return (3* ( pow((x+dx),2)*fields_vect[1][ind_space+1] - pow((x-dx),2)*fields_vect[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) +param[0]*(pow(fields_vect[1][ind_space],2)-pow(fields_vect[0][ind_space],2))+artificial_diss(epsilon,ord,fields_vect,ind_field,ind_space,dx,dt) );
 }
 
@@ -455,38 +529,38 @@ double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vect
 
 // ---------- INITIAL DATA AND INITIALIZATION OF VECTORS --------------- //
 
-double initial_line(double x,std::vector<double> &init_param) 
+double initial_line(double x,double init_param) 
 {
     return(x);
 }
 
-double initial_null(double x,std::vector<double> &init_param) 
+double initial_null(double x,double init_param) 
 {
-    double a = 0;
+    double a = 0.;
     return(a);
 }
 
 
-double initial_gauss_PI(double x,std::vector<double> &init_param)
+double initial_gauss_PI(double x,double init_param)
 {
-    return( -init_param[0]*exp(-pow(x,2)) );
+    return( -init_param*exp(-pow(x,2)) );
 }
 
 
 
-double initial_gauss_Phi(double x,std::vector<double> &init_param)
+double initial_gauss_Phi(double x,double init_param)
 {
-    return(-2*x*init_param[0]*exp(-pow(x,2)));
+    return(-2*x*init_param*exp(-pow(x,2)));
 }
 
-double initial_gauss_function(double x,std::vector<double> &init_param) 
+double initial_gauss_function(double x,double init_param) 
 {
     
     double a = exp(-pow(x,2));
     return(a);
 }
 
-double initial_parab_function(double x,std::vector<double> &init_param)
+double initial_parab_function(double x,double init_param)
 {
     double a = -2*pow(x,2);
     return(a);
@@ -499,20 +573,23 @@ double line(double x,double t)
 
 
 // initialize the fields at time zero
-void initialize_fields(std::vector<std::vector<double>> &vect,double d_min,double d_max,double dx,std::vector<double(*)(double,std::vector<double> &)> &funcs,std::vector<double> &param_ic)
+void initialize_fields(std::vector<std::vector<double>> &vect,double d_min,double d_max,double dx,std::vector<double(*)(double,double)> &funcs,double param_ic)
 {
+    std::vector<std::vector<double>> new_vect;
+    //cout<<param_ic[0]<<endl;
     int N = funcs.size();
     for(int n=0;n<N;n++)
     {
         std::vector<double> support_vector;
-        vect.push_back(support_vector);
+        new_vect.push_back(support_vector);
         for(double j=d_min;j<d_max+dx/2.;j=j+dx)
         {
             
             //cout<< j <<"\n";
-            vect[n].push_back(funcs[n](j,param_ic));
+            new_vect[n].push_back(funcs[n](j,param_ic));
         }
     }
+    vect.swap(new_vect);
 }
 
 
@@ -613,7 +690,7 @@ void refl_abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,st
 
 void radiative_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> &fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> &Dx,double (*artificial_diss)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,int ord)
 {
-    int last_ind = fields_vect_old[j].size()-1-gl;
+    int last_ind = fields_vect_old[0].size()-1-gl;
     // left boundary conditions
     fields_vect_new[j].insert(fields_vect_new[j].begin(),dt*( Dx[0](fields_vect_old[0],gl,dx)+artificial_diss(epsilon,ord,fields_vect_old,j,gl,dx,dt)));
 
@@ -629,15 +706,15 @@ void radiative_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,s
 
 void radiative_outer_boundaries_PI_we(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> &fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> &Dx,double (*artificial_diss)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,int ord)
 {
-    int last_ind = fields_vect_old[j].size()-1-gl;
+    int last_ind = fields_vect_old[0].size()-1-gl;
     // at the left boundary, the origin, we don't put any conditions
     int ind_space = gl;
     double x = dmin;
     double derivative = (3.* ( pow((x+dx),2)*fields_vect_old[1][ind_space+1] - pow((x-dx),2)*fields_vect_old[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) );
-    fields_vect_new[j].insert(fields_vect_new[j].begin(),dt*( derivative+artificial_diss(epsilon,ord,fields_vect_old,j,gl,dx,dt)));
+    fields_vect_new[0].insert(fields_vect_new[j].begin(),dt*( derivative+artificial_diss(epsilon,ord,fields_vect_old,0,gl,dx,dt)));
 
     // right boundary conditions
-    fields_vect_new[j].push_back(dt*(-Dx[0](fields_vect_old[0],last_ind,dx)+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt)));
+    fields_vect_new[0].push_back(dt*(-Dx[0](fields_vect_old[0],last_ind,dx)+artificial_diss(epsilon,ord,fields_vect_old,0,last_ind,dx,dt)));
 
     //fields_vect_new[j].push_back(-Dx[0](fields_vect_old[0],last_ind,dx));
     //fields_vect_new[j].push_back(- dt*((3/2*fields_vect_old[0][last_ind]-2*fields_vect_old[0][last_ind-1]+1/2*fields_vect_old[0][last_ind-2])/dx +artificial_diss(epsilon,ord,fields_vect_old,0,last_ind,dx,dt)));
@@ -645,6 +722,7 @@ void radiative_outer_boundaries_PI_we(std::vector<std::vector<double>> &fields_v
 
 void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> &fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> &Dx,double (*artificial_diss)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double epsilon,int ord)
 {
+    
     int last_ind = fields_vect_old[j].size()-1-gl;
     // at the left boundary, the origin, we don't put any conditions
     int ind_space = gl;
@@ -656,6 +734,7 @@ void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_v
     
     
     // right boundary conditions
+    
     fields_vect_new[j].push_back(dt*(-Dx[0](fields_vect_old[0],last_ind,dx)+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt)));
 
     //fields_vect_new[j].push_back(-Dx[0](fields_vect_old[0],last_ind,dx));
@@ -1039,7 +1118,7 @@ void diff_vector(std::vector<double> &diff,std::vector<double> &vec1, std::vecto
     
 // Function to print on a file the data
 
-void print_f(std::vector< std::vector<double> > &fields_vect, double dmin, double dx, string name_file,string name_folder)
+void print_f1(std::vector< std::vector<double> > &fields_vect, double dmin, double dx, string name_file,string name_folder)
 {
     ofstream myfile;
     string name = name_folder;
@@ -1056,13 +1135,48 @@ void print_f(std::vector< std::vector<double> > &fields_vect, double dmin, doubl
     for (int j=0; j<fields_vect[0].size();j++)
     {
         myfile << dmin+dx*j<<",";
+        
         // for every fields add the relative value
         for (int i=0; i<fields_vect.size(); i++)
         {
             myfile << fields_vect[i][j]<<",";
+            
         }
         myfile<<"\n";
     }
     
     myfile.close();
+}
+
+
+void print_f(std::vector< std::vector<double> > &fields_vect, double dmin, double dx, string name_file,string name_folder)
+{
+    
+    ofstream myfile_print_f;
+    myfile_print_f.open (name_file,ios::app);
+    // headers of the columns
+    myfile_print_f<<"x,";
+    for (int i=0; i<fields_vect.size()-1; i++)
+    {
+        
+        myfile_print_f << "field"<<to_string(i)<<",";
+    }    
+    myfile_print_f << "field"<<to_string(fields_vect.size()-1)<<"\n";
+    
+    // for every spatial point
+    for (int j=0.; j<fields_vect[0].size();j= j+1)
+    {
+        myfile_print_f << dmin+dx*double(j)<<",";
+        // for every fields add the relative value
+        for (int i=0; i<fields_vect.size()-1; i++)
+        {
+            myfile_print_f << fields_vect[i][j]<<",";
+        }
+        myfile_print_f << fields_vect[fields_vect.size()-1][j];
+        myfile_print_f<<"\n";
+    
+    }
+    //cout<<" field0"<<"= "<< fields_vect[0][fields_vect[0].size()-1]<<endl;
+    
+    myfile_print_f.close();
 }
