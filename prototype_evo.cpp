@@ -13,9 +13,9 @@ int main()
     
     // setup of the fields and their initial condition in an domain=[dmin,dmax]
     
-    double dmin=0, dmax=5;
+    double dmin=0, dmax=5.;
     //int n_point = 500;
-    double h1 = 0.01, h2=h1/2, h3=h1/4;
+    double h1 = 0.1, h2=h1/2, h3=h1/4;
     
     
     std::vector< std::vector<double> > fields_vect1;
@@ -28,6 +28,9 @@ int main()
     //std::vector< std::vector<double> > diff2;
     //std::vector< std::vector<double> > diff3;
     
+    //ghost points at the boundary
+    int gl = 1;
+    int gr = 1;
     
     // initial condition //
     
@@ -37,11 +40,11 @@ int main()
     //initial_conditions.push_back(&initial_null);
     
     
-    
+    // 2.35
     std::vector<double> parameters_ic_vector;
-    for(double i=2.35;i<2.36;i=i+0.01)
+    for(double i=1.34;i<1.36;i=i+0.01)
     {
-        parameters_ic_vector.push_back(1);
+        parameters_ic_vector.push_back(i);
     }
     
     
@@ -58,17 +61,16 @@ int main()
     // setup of the diffential operator functions of the specific differential equation
     std::vector< double(*)(int ,int ,std::vector<std::vector<double>> &,double ,double ,std::vector<double> &, double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int ,double, int ) > R_vector;
     //R_vector.push_back(&advection_eq_right_going);
-    R_vector.push_back(&model1_PI);
-    R_vector.push_back(&wave_eq_PHI);
-    //R_vector.push_back(&wave_eq_function);
+    R_vector.push_back(&wave_eq_compactified_PI);
+    R_vector.push_back(&wave_eq_compactified_PHI);
+    //R_vector.push_back(&wave_eq_compactified_phi);
     
    
     // setup of the boundary conditions 
-    std::vector< void(*)(std::vector<std::vector<double>> &,std::vector<std::vector<double>> &,double ,double , double , int ,int , int ,double,double ,std::vector<double (*)(std::vector<double>,int,double)> &,double (*)(double,int,std::vector<std::vector<double>> &,int,int,double,double),double ,int)> b_func;
-    //b_func.push_back(&adv_boundaries_left);
-    b_func.push_back(&radiative_outer_boundaries_PI_m1);
-    b_func.push_back(&no_boundary_conditions_PHI);
-    //b_func.push_back(&no_boundary_conditions_phi);
+    std::vector< boundary_conditions_function> b_func;
+    b_func.push_back(&no_boundary_conditions_PI_hyp);
+    b_func.push_back(&no_boundary_conditions_PHI_hyp);
+    //b_func.push_back(&no_boundary_conditions_phi_hyp);
     
     
     
@@ -76,13 +78,12 @@ int main()
     double  dt1 = h1*0.4, dt2=h2*0.4, dt3=h3*0.4, integration_interval = dt1*200, step_to_save = 200 ;
     //cout<<"dt1 = "<<dt1<<"\ndt2 = "<<dt2<<"\ndt3 = "<<dt3<<endl; //print the time steps
     // parameters vector that may be required from the system
-    double v = 1;
+    double v = 1.;
+    double A = 1.;
+    double s = dmax;
     std::vector<double> parameters;
-    parameters.push_back(v);
+    parameters.push_back(s);
     
-    //ghost points at the boundary
-    int gl = 1;
-    int gr = 1;
     
     
     /* output writing version 1.0
@@ -95,16 +96,16 @@ int main()
     */
     
     // writing the output in a file
-    string file_path = "./data/log_comp/data14/";
+    string file_path = "./data/log_comp/data15/";
     
     
     
      //single run output writing
     
-    string name_file = "ampl_"+to_string(parameters_ic_vector[0])+"_dx_"+to_string(h1)+".csv";
+    string name_file = "hyp_slice_ampl_"+to_string(parameters_ic_vector[0])+"_dx_"+to_string(h1)+".csv";
     ofstream myfile2;
-    myfile2.open (file_path+"name_of_file",ios::app);
-    myfile2<<file_path+name_file<<"\n";
+    myfile2.open (file_path+"name_of_file");
+    myfile2<<"names\n"<<file_path+name_file<<"\n";
     myfile2.close();
 
     file_path.append(name_file);
@@ -120,7 +121,9 @@ int main()
     
     std::vector<double (*)(std::vector<double>,int,double)> Dx;
     Dx.push_back(first_der_second_order_centered);
-    
+    //Dx.push_back(first_der_second_order_forward);
+    //Dx.push_back(first_der_second_order_backward);
+
     //Dx.push_back(first_der_fourth_order_centered);
     /*
     // --------- EVOLUTION OF THE FUNCTION --------- //
@@ -145,8 +148,8 @@ int main()
         MOL_RK4(fields_vect2,&onestep_RK4_1,h2,parameters,dt2, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
         MOL_RK4(fields_vect3,&onestep_RK4_1,h3,parameters,dt3, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     }
+    
     */
-     
     MOL_RK4(fields_vect1,&onestep_RK4_1,h1,parameters,dt1, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     MOL_RK4(fields_vect2,&onestep_RK4_1,h2,parameters,dt2, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     MOL_RK4(fields_vect3,&onestep_RK4_1,h3,parameters,dt3, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
@@ -156,7 +159,7 @@ int main()
     //MOL_RK4(fields_vect2a,&onestep_RK4_1,h2,parameters,dt2, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
     //MOL_RK4(fields_vect3a,&onestep_RK4_1,h3,parameters,dt3, integration_interval,dmin,dmax,R_vector,b_func,step_to_save,print_f,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,Dx,file_path);
       
-    /*
+    
     multiple_parameters_run(parameters_ic_vector,initial_conditions,initialize_fields,dmin,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,onestep_RK4_1,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,print_f,file_path,MOL_RK4);
     */
     
