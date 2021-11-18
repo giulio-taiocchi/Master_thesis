@@ -38,10 +38,10 @@ def conv_test(vect1,vect2,theo,t):
     #plt.plot(vect2['x'],np.subtract(field2,theo_vect2))
     return(np.log(norm_diff_1/norm_diff_2)/np.log(2))
     
-def self_conv_test(vect1, vect2, vect3):
-    field1 = tuple(vect1['field0'])
-    field2 = tuple(vect2['field0'])
-    field3 = tuple(vect3['field0'])
+def self_conv_test(vect1, vect2, vect3,gl,gr):
+    field1 = tuple(vect1['field0'][gl:-gr])
+    field2 = tuple(vect2['field0'][gl:-gr])
+    field3 = tuple(vect3['field0'][gl:-gr])
    
     
     dx1 = vect1['x'][1]-vect1['x'][0]
@@ -53,10 +53,10 @@ def self_conv_test(vect1, vect2, vect3):
     norm_diff_2 = norm(np.subtract(field2,field3[::2]),dx2)
     return(np.log(norm_diff_1/norm_diff_2)/np.log(2.0))
 
-def self_conv_test_pw(vect1, vect2, vect3):
-    field1 = tuple(vect1['field0'])
-    field2 = tuple(vect2['field0'])
-    field3 = tuple(vect3['field0'])
+def self_conv_test_pw(vect1, vect2, vect3,gl,gr):
+    field1 = tuple(vect1['field0'][gl:-gr])
+    field2 = tuple(vect2['field0'][gl:-gr])
+    field3 = tuple(vect3['field0'][gl:-gr])
     dx1 = vect1['x'][1]-vect1['x'][0]
     dx2 = vect2['x'][1]-vect2['x'][0]
     #dx3 = vect3['x'][1]-vect3['x'][0]
