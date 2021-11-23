@@ -69,6 +69,8 @@ def self_conv_test_pw(vect1, vect2, vect3,gl,gr):
 def norm(vect,dx):
     norm = 0
     for i in range(len(vect)):
+        if (vect[i] == 'Nan'):
+            return('Nan')
         norm = norm + vect[i]**2 *dx
     norm = norm**(0.5)
     return (norm)
@@ -91,3 +93,10 @@ def initialize_func_vect(func,domain,dx,t):
     for x in domain:
         vect.append(func(x,t))
     return(vect)
+
+def maximums_time_vector(vectors):
+    maximums_vector = []
+    for i in range(len(vectors)):
+        value = vectors[i].maximum()
+        maximums_vector.append(value)
+    return(maximums_vectors)

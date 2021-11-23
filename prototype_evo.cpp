@@ -9,13 +9,13 @@ using namespace std;
 
 int main() 
 {
-    
+     cout.precision(10);
     
     // setup of the fields and their initial condition in an domain=[dmin,dmax]
     
-    double dmin=0, dmax=2.5;
+    double dmin=0, dmax=5;
     //int n_point = 500;
-    double h1 = 0.05, h2=h1/2, h3=h1/4;
+    double h1 = 0.01, h2=h1/2, h3=h1/4;
     
     //std::vector< std::vector<double> > diff1;
     //std::vector< std::vector<double> > diff2;
@@ -26,13 +26,15 @@ int main()
     int gr = 1;
     
     // dissipation coefficient for the art. diss.
-    //vector<double> epsilon1 = {0.045,0.044,0.02,0.008}; 
+    vector<double> epsilon1 = {0.}; 
+    /*
     vector<double> epsilon1;
     for (double e=0;e<0.02;e=e+0.01)
     {
         epsilon1.push_back(e);
     }
-    int ord = 2;
+    */
+    int ord = 0;
     
     // initial condition //
     
@@ -41,11 +43,16 @@ int main()
     initial_conditions.push_back(&initial_null);
     //initial_conditions.push_back(&initial_null);
     
+   
+    // 2.3316 don't diverges with dx=0.0025
+    // 2.33165 diverges with dx=0.0025
+    // note: (2e)^(0.5) = 2.3316439816
+    //std::vector<double> parameters_ic_vector = {2.3249, 2.3254, 2.3259, 2.3264, 2.3269, 2.3274, 2.3279, 2.3284, 2.3289, 2.3294, 2.3299, 2.3304};
     
-    // 2.35
     std::vector<double> parameters_ic_vector;
-    for(double a=1;a<1.1;a=a+1)
+    for(double a=1 ;a<=1;a=a+0.00001)
     {
+        cout<<a<<endl;
         parameters_ic_vector.push_back(a);
     }
     
@@ -55,29 +62,29 @@ int main()
     // setup of the diffential operator functions of the specific differential equation
     std::vector< evolution_function > R_vector;
     //R_vector.push_back(&advection_eq_right_going);
-    R_vector.push_back(&model1_PI);
-    R_vector.push_back(&wave_eq_PHI);
-    //R_vector.push_back(&wave_eq_compactified_phi);
+    R_vector.push_back(&wave_eq_compactified_PI);
+    R_vector.push_back(&wave_eq_compactified_PHI);
+    //R_vector.push_back(&wave_eq_phi);
     
    
     // setup of the boundary conditions 
     int number_of_bc = 2;
     std::vector< boundary_conditions_function> b_func(number_of_bc);
-    b_func[0] = (&radiative_outer_boundaries_PI_m1);
-    b_func[1] = (&no_boundary_conditions_PHI);
-    //b_func[1] = (&no_boundary_conditions_phi);
+    b_func[0] = (&no_boundary_conditions_PI_hyp);
+    b_func[1] = (&no_boundary_conditions_PHI_hyp);
+    //b_func[2] = (&no_boundary_conditions_phi);
     
     
     
     // setting the time integration parameters
-    double  dt1 = h1*0.4, dt2=h2*0.4, dt3=h3*0.4, integration_interval = dt1*1200, step_to_save = 300 ;
+    double  dt1 = h1*0.4, dt2=h2*0.4, dt3=h3*0.4, integration_interval = dt1*5000, step_to_save = 100 ;
     //cout<<"dt1 = "<<dt1<<"\ndt2 = "<<dt2<<"\ndt3 = "<<dt3<<endl; //print the time steps
     // parameters vector that may be required from the system
     double v = 1.;
     double A = 1.;
     double s = dmax;
     std::vector<double> parameters;
-    parameters.push_back(A);
+    parameters.push_back(s);
     
     // setting the derivative operators vector
     std::vector<double (*)(std::vector<double>,int,double)> Dx;
@@ -87,14 +94,14 @@ int main()
     
     
     // writing the output in a file
-    string file_path = "./data/log_comp/data16/";   
+    string file_path = "./data/wave_equation/data40/";   
     
     
     //single run 
     /*
     // output files setting
     string name_file = to_string(parameters_ic_vector[0])+"_dx_"+to_string(h1)+".csv";
-    ofstream myfile2;
+    ofstream myfile2;s
     myfile2.open (file_path+"name_of_file");
     myfile2<<"names\n"<<file_path+name_file<<"\n";
     myfile2.close();

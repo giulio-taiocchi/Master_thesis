@@ -46,7 +46,7 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
             std::vector< std::vector<double> > fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
             // setting the output variables
             //cout<<"\n lun vec \n"<<endl;
-            string name_file = "ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+".csv";
+            string name_file = "ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+"steps"+to_string(step_to_save)+".csv";
             
             myfile2.open (file_path+"name_of_file",ios::app);
             myfile2<<file_path+name_file<<"\n";
@@ -107,7 +107,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
     last = t;
     }
     
-    cout<<"last time included:"<<last<<endl;
+    //cout<<"last time included:"<<last<<endl;
     
 }
 
@@ -253,6 +253,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         }
     }
     
+
     
     // k2 building
     for (int j=0; j <N; j++)
@@ -321,7 +322,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
             new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.;
         }
     }    
-    //cout<<"old "<<fields_vect[0].size()<<"new "<<new_fields_vect[0].size()<<endl;
+    //cout<<"old "<<fields_vect.size()<<"new "<<new_fields_vect.size()<<endl;
     return(new_fields_vect);
 }
 
@@ -419,7 +420,7 @@ double wave_eq_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> 
     //return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx));
 }
 
-double wave_eq_function(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //return(fields_vect[0][ind_space]);
     return(fields_vect[0][ind_space]);
@@ -446,14 +447,30 @@ double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fi
     return (3* ( pow((x+dx),2)*fields_vect[1][ind_space+1] - pow((x-dx),2)*fields_vect[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) +param[0]*(pow(fields_vect[1][ind_space],2)-pow(fields_vect[0][ind_space],2)) );
 }
 
+double model3_PI1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double x = dmin+dx*(ind_space-gl);
+    //cout<<"x in eq for PI "<<x<<endl;
+    //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
+    return (3* ( pow((x+dx),2)*fields_vect[1][ind_space+1] - pow((x-dx),2)*fields_vect[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + (fields_vect[2][ind_space] + param[0] * fields_vect[5][ind_space])/pow(param[0],2)*(pow(fields_vect[1][ind_space],2)+pow(fields_vect[4][ind_space],2)-pow(fields_vect[0][ind_space],2)-pow(fields_vect[3][ind_space],2)));
+}
+
+double model3_PI2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double x = dmin+dx*(ind_space-gl);
+    //cout<<"x in eq for PI "<<x<<endl;
+    //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
+    return (3* ( pow((x+dx),2)*fields_vect[4][ind_space+1] - pow((x-dx),2)*fields_vect[4][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + (fields_vect[5][ind_space] - param[0] * fields_vect[2][ind_space])/pow(param[0],2)*(pow(fields_vect[1][ind_space],2)+pow(fields_vect[4][ind_space],2)-pow(fields_vect[0][ind_space],2)-pow(fields_vect[3][ind_space],2)));
+}
+
 
 
 double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
-    double r = dmin+dx*ind_space;
+    double r = dmin+dx*(ind_space-gl);
     double s = param[0];
     
-    double rate_of_square = pow(r/s,2);
+    double rate_of_square =pow(r,2)/pow(s,2);
     //double R = r/(1-rate_of_square);
     //double Rprime = (1+rate_of_square)/pow((1-rate_of_square),2);
     //double Hprime = 1-1/Rprime;
@@ -462,7 +479,7 @@ double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vect
     double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variable for H'/(R'*(1-H'^2))
-    double coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
     
     return (-coefficient2*Dx[0](fields_vect[0],ind_space,dx)
             -coefficient1*Dx[0](fields_vect[1],ind_space,dx)
@@ -472,7 +489,7 @@ double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vect
 
 double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
-    double r = dmin+dx*ind_space;
+    double r = dmin+dx*(ind_space-gl);
     double s = param[0];
     
     double rate_of_square = pow(r,2)/pow(s,2);
@@ -481,7 +498,7 @@ double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vec
     double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variavle for H'/(R'*(1-H'^2))
-    double coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
  
     return (-coefficient2*Dx[0](fields_vect[1],ind_space,dx)
             -coefficient1*Dx[0](fields_vect[0],ind_space,dx));
@@ -490,6 +507,7 @@ double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vec
 
 double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
+    double r = dmin+dx*(ind_space-gl);
     return(-fields_vect[0][ind_space]);
 }
 
@@ -510,14 +528,13 @@ double initial_null(double x,double init_param)
 
 double initial_gauss_PI(double x,double init_param)
 {
-    return( -1*init_param*exp(-pow((x*2),2)) );
+    return( -init_param*exp(-pow((x),2)) );
 }
 
 double initial_gauss_PI_hyp(double x,double init_param)
 {
     double s = 5;
-    double rate_of_square = pow(x/s,2);
-    return( init_param*exp(-pow(x-2.5,2))*(1-rate_of_square)/sqrt(1+pow(rate_of_square,2)-2*rate_of_square+pow(x,2) ));
+    return( init_param*exp(-pow(x-2.5,2))/pow(pow(s,2)+pow(x,2),0.5));
 }
 
 
@@ -747,34 +764,34 @@ void no_boundary_conditions_phi(std::vector<std::vector<double>> &fields_vect_ne
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     // left boundary conditions
-    fields_vect_new[j].insert(fields_vect_new[j].begin(),(fields_vect_old[0][gl]+artificial_diss(epsilon,ord,fields_vect_old,j,gl,dx,dt)));
+    fields_vect_new[j][gl] = (fields_vect_old[0][gl]+artificial_diss(epsilon,ord,fields_vect_old,j,gl,dx,dt));
     // right boundary conditions
-    fields_vect_new[j].push_back((fields_vect_old[0][last_ind]+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt)));
+    fields_vect_new[j][last_ind] = (fields_vect_old[0][last_ind]+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));
 }
 
 void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
-    int ind_space_left=0;
+    int ind_space_left=gl;
     
         
-    double r = dmin+dx*ind_space_left;
+    double r = dmin;
     double s = param[0];
     
-    double rate_of_square = pow(r/s,2);
+    double rate_of_square = pow(r,2)/pow(s,2);
     
     //w we introduce a variable for 1/(R'(1-H'^2))
     double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variavle for H'/(R'*(1-H'^2))
-    double coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
     
      
     double left_value = (-coefficient2*Dx[0](fields_vect_old[0],ind_space_left,dx)
                         -coefficient1*Dx[0](fields_vect_old[1],ind_space_left,dx));
     
     
-    r = dmin+dx*last_ind;
+    r = dmax;
     s = param[0];
     
     rate_of_square = pow(r,2)/pow(s,2);
@@ -782,7 +799,7 @@ void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect
     coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variavle for H'/(R'*(1-H'^2))
-    coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
     
     
     double right_value = (-coefficient2*Dx[0](fields_vect_old[0],last_ind,dx)
@@ -797,9 +814,9 @@ void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect
 void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
-    int ind_space_left=0;
+    int ind_space_left=gl;
     
-    double r = dmin+dx*ind_space_left;
+    double r = dmin;
     double s = param[0];
     
     double rate_of_square = pow(r,2)/pow(s,2);
@@ -808,22 +825,21 @@ void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vec
     double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variavle for H'/(R'*(1-H'^2))
-    double coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
     
      
     double left_value = (-coefficient2*Dx[0](fields_vect_old[1],ind_space_left,dx)
                         -coefficient1*Dx[0](fields_vect_old[0],ind_space_left,dx));
     
     
-    r = dmin+dx*last_ind;
-    s = param[0];
+    r = dmax;
     
     rate_of_square = pow(r,2)/pow(s,2);
     //w we introduce a variable for 1/(R'(1-H'^2))
     coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
     
     // we introduce a variavle for H'/(R'*(1-H'^2))
-    coefficient2 = rate_of_square*(3-rate_of_square)*pow((1+rate_of_square),2)/(1+4*rate_of_square-pow(rate_of_square,2));
+    coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
     
     
     double right_value = (-coefficient2*Dx[0](fields_vect_old[1],last_ind,dx)
@@ -838,7 +854,7 @@ void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vec
 void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
-    int ind_space_left=0;
+    int ind_space_left=gl;
     
     double left_value = -fields_vect_old[0][ind_space_left];
     double right_value = -fields_vect_old[0][last_ind];
