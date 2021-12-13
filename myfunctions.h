@@ -1,5 +1,6 @@
 #include <math.h>
 #include <fstream>
+#include <sstream>
 #include "spline.h"
 using namespace std;
 
@@ -32,7 +33,6 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
     
     for(int e=0;e<epsilon1.size();e++)
     {
-        
         for (int l=0;l<parameters_ic_vector.size();l++)
         {
             cout<<"\nepsilon = "<<epsilon1[e]<<endl;
@@ -46,11 +46,7 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
             std::vector< std::vector<double> > fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
             // setting the output variables
             //cout<<"\n lun vec \n"<<endl;
-            string name_file = "ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+"steps"+to_string(step_to_save)+".csv";
-            
-            myfile2.open (file_path+"name_of_file",ios::app);
-            myfile2<<file_path+name_file<<"\n";
-            myfile2.close();
+            string name_file = "ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+"steps"+to_string(step_to_save)+"last_time"+to_string(integration_interval)+".csv";
             
             string complete_path = file_path+name_file;
             ofstream myfile;
@@ -98,7 +94,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
             //myfile.open (file_path, ios::app);
             //myfile<<t<<"\n";
             //myfile.close();
-            cout<<"print the fields at time"<<t<<endl;
+            //cout<<"print the fields at time"<<t<<endl;
             print_f(fields_vect,dmin,dx,file_path,file_path,gl,gr); // the print_f function is called
             //cout<<t<<endl;
         }
@@ -437,7 +433,8 @@ double wave_eq_spherical_PI(int ind_field,int ind_space,std::vector<std::vector<
     return (3* ( pow((x+dx),2)*fields_vect[1][ind_space+1] - pow((x-dx),2)*fields_vect[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) );
 }
 
-
+// R RESCALING HYPERBOLOIDAL foliation //
+// here are reported the evolution equations for the auxiliary function of the rescaled (by R) and compactified wave equation
 double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
@@ -485,6 +482,28 @@ double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vec
 }
 
 
+// CHI RESCALING HYPERBOLOIDAL FOLIATION //
+double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*(ind_space-gl);
+    double s = param[0];
+    
+    double rate_of_square =pow(r,2)/pow(s,2);
+    //double R = r/(1-rate_of_square);
+    //double Rprime = (1+rate_of_square)/pow((1-rate_of_square),2);
+    //double Hprime = 1-1/Rprime;
+    
+    //w we introduce a variable for 1/(R'(1-H'^2))
+    double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
+    
+    // we introduce a variable for H'/(R'*(1-H'^2))
+    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
+    
+    return (-coefficient2*Dx[0](fields_vect[0],ind_space,dx)
+            -coefficient1*Dx[0](fields_vect[1],ind_space,dx)
+            );
+        
+}
 // ----------- // MODEL 1 // ----------- //
 
 
@@ -569,7 +588,7 @@ double initial_null(double x,double init_param)
 
 double initial_gauss_PI(double x,double init_param)
 {
-    return( -init_param*exp(-pow((x*4),2)) );
+    return( -init_param*exp(-pow((x*2/3),2)) );
 }
 
 double initial_gauss_PHI_compactified(double x,double init_param)
@@ -579,7 +598,7 @@ double initial_gauss_PHI_compactified(double x,double init_param)
     double R = x/(1-rate_of_square);
     if(x!=s)
     {
-        return( -2*init_param *pow(R,2)*exp(-pow(R,2)));
+        return( 2*init_param *pow(R,2)*exp(-pow(R,2))-init_param *exp(-pow(R,2)));
     }
     else
     {
@@ -1410,4 +1429,71 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
     //cout<<" field0"<<"= "<< fields_vect[0][fields_vect[0].size()-1]<<endl;
     
     myfile_print_f.close();
+}
+
+
+void read_parameters(string name_parameters_file, double &dmin, double &dmax, double &h1, double &integration_interval,int &step_to_save,int &gl,int &gr,int &ord, vector<double> &epsilon,vector<double> &parameters_ic_vector, vector<double> &parameters)
+{
+    // we read the input parameter from an external file
+    ifstream input_file;
+    input_file.open(name_parameters_file);
+    
+    input_file.ignore(256,' ');
+    input_file >> dmin;
+    
+    input_file.ignore(256,' ');
+    input_file >> dmax;
+    
+    input_file.ignore(256,' ');
+    input_file >> h1;
+    
+    input_file.ignore(256,' ');
+    input_file >> integration_interval;
+    
+    input_file.ignore(256,' ');
+    input_file >> step_to_save;
+    
+    input_file.ignore(256,' ');
+    input_file >> gl;
+    
+    input_file.ignore(256,' ');
+    input_file >> gr;
+    
+    input_file.ignore(256,' ');
+    input_file >> ord;
+    
+    
+    // epsilon vector
+    std::string e;
+    input_file.ignore(256,' ');
+    getline (input_file,e);
+    
+    std::stringstream iss (e);
+    double number;
+    while ( iss >> number )
+    {
+        epsilon.push_back( number );
+    }
+    
+    // initial parameters vector
+    std::string ic_par;
+    input_file.ignore(256,' ');
+    getline (input_file,ic_par);
+    std::stringstream iss1 (ic_par);
+    while ( iss1 >> number )
+    {
+        parameters_ic_vector.push_back( number );
+    }
+    
+    // parameters vector
+    std::string par;
+    input_file.ignore(256,' ');
+    getline (input_file,par);
+    std::stringstream iss2 (par);
+    while ( iss2 >> number )
+    {
+        parameters.push_back( number );
+    }
+    
+    input_file.close();
 }
