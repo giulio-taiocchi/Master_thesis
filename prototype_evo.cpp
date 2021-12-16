@@ -12,7 +12,7 @@ int main()
      cout.precision(10);
     
     // declare the path where the input/output files are collected   
-    string file_path = "./data/hyperboloidal_wave_equation/data2/"; 
+    string file_path = "./data/hyperboloidal_wave_equation/data3/"; 
     // declare the name of the parameters file
     string parameter_file_name = "parameters_file_0";
     
@@ -59,9 +59,9 @@ int main()
     
     // setup of the diffential operator functions of the specific differential equation
     std::vector< evolution_function > R_vector;
-    R_vector.push_back(&wave_eq_compactified_PI);
-    R_vector.push_back(&wave_eq_compactified_PHI);
-    R_vector.push_back(&wave_eq_compactified_phi);
+    R_vector.push_back(&wave_eq_compactified_PI_Chi);
+    R_vector.push_back(&wave_eq_compactified_PHI_Chi);
+    R_vector.push_back(&wave_eq_compactified_phi_Chi);
     //R_vector.push_back(&model3_PI2);
     //R_vector.push_back(&model3_PHI2);
     //R_vector.push_back(&model3_phi2);
@@ -70,9 +70,9 @@ int main()
     // setup of the boundary conditions 
     int number_of_bc = 3;
     std::vector< boundary_conditions_function> b_func(number_of_bc);
-    b_func[0] = (&no_boundary_conditions_PI_hyp);
-    b_func[1] = (&no_boundary_conditions_PHI_hyp);
-    b_func[2] = (&no_boundary_conditions_phi_hyp);
+    b_func[0] = (&no_boundary_conditions_PI_hyp_Chi);
+    b_func[1] = (&no_boundary_conditions_PHI_hyp_Chi);
+    b_func[2] = (&no_boundary_conditions_phi_hyp_Chi);
     //b_func[3] = (&radiative_outer_boundaries_PI2_m3);
     //b_func[4] = (&no_boundary_conditions_PHI2_m3);
     //b_func[5] = (&no_boundary_conditions_PHI2_m3);
@@ -95,7 +95,11 @@ int main()
     
     // --------- EVOLUTION OF THE FUNCTION --------- //
     
-    multiple_parameters_run(parameters_ic_vector,initial_conditions,initialize_fields,dmin,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,onestep_RK4_1,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled,artificial_dissipation_2_Husa,epsilon1,print_f,file_path,MOL_RK4,ord);
+    multiple_parameters_run(parameters_ic_vector,initial_conditions,initialize_fields,dmin,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,onestep_RK4_1,gl,gr,ghost_point_extrapolation_4_ord_spherical_symmetry,artificial_dissipation_2_Husa,epsilon1,print_f,file_path,MOL_RK4,ord);
+    /*
+    MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function one_step, double dx, std::vector<double> param, double dt, double interval,    double dmin,    double dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path)
     
+    multiple_layer(fields_vect, one_step, dx, param, dt, interval, dmin, dmax, R_vect, bc, step_to_save,  print_f, gl, gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path)
+    */
     return 0;
 } 

@@ -99,6 +99,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
             //cout<<t<<endl;
         }
         fields_vect = one_step(fields_vect,dmin,dmax,dx,param,dt,R_vect,bc,t,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon,Dx,ord);
+        
         counter += 1;
     last = t;
     }
@@ -204,8 +205,9 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
 {
     //cout<<"size: "<<fields_vect[0].size()<<endl;
     int N = fields_vect.size();
+    //cout<<"number of fields:"<<N<<endl;
     int S =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
-    
+    //cout<<"S: "<<S<<endl;
     // A second order Kreis Oliger artificial dissipation is used
     
     vector<vector<double>> k1(N, vector<double>(S)) ;
@@ -249,7 +251,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         }
     }
     
-
+    
     
     // k2 building
     for (int j=0; j <N; j++)
@@ -482,27 +484,52 @@ double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vec
 }
 
 
-// CHI RESCALING HYPERBOLOIDAL FOLIATION //
+//------------------- CHI RESCALING HYPERBOLOIDAL FOLIATION -------------------//
+
+// compactification: T = t + H(R), H'=1-1/R', R=r/(1-(r/s)^2)
+// rescaling: by chi(R) = (1+R^2)^(1/2)
+// note: at the oriign we apply Evan's method for the terms wich present 1/r
+// note: for r=s, we use a different RHS sicne some of the terms would diverge. Computing a limit "by hand", we can put = 0 the problematic terms
+
 double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
     
-    double rate_of_square =pow(r,2)/pow(s,2);
-    //double R = r/(1-rate_of_square);
-    //double Rprime = (1+rate_of_square)/pow((1-rate_of_square),2);
-    //double Hprime = 1-1/Rprime;
-    
-    //w we introduce a variable for 1/(R'(1-H'^2))
-    double coefficient1 = (1+rate_of_square) / (1+4*rate_of_square-pow(rate_of_square,2));
-    
-    // we introduce a variable for H'/(R'*(1-H'^2))
-    double coefficient2 = rate_of_square*(3-rate_of_square)/(1+4*rate_of_square-pow(rate_of_square,2));
-    
-    return (-coefficient2*Dx[0](fields_vect[0],ind_space,dx)
-            -coefficient1*Dx[0](fields_vect[1],ind_space,dx)
+    double A = pow(r,4) + pow(r,6) - 2* pow(r,2)*s + pow(s,2);
+    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    double C = pow(r,2) - s;
+    double D = pow(r,2) - 3*s;
+    double F = pow(r,2) + s;
+    double G = pow(r,4)-3*pow(r,2)*s;
+    return (C*pow(D,2)*r* (2*A*fields_vect[1][ind_space]-3*C*pow(r,3)*fields_vect[2][ind_space])/(pow(A,2)*B)
+            +F*s*Dx[0](fields_vect[0],ind_space,dx)/B + G*Dx[0](fields_vect[1],ind_space,dx)
             );
-        
+}
+
+double wave_eq_compactified_PHI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*(ind_space-gl);
+    double s = param[0];
+    
+    double A = pow(r,4) + pow(r,6) - 2* pow(r,2)*s + pow(s,2);
+    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    double C = pow(r,2) - s;
+    double D = pow(r,2) - 3*s;
+    double F = pow(r,2) + s;
+    double G = pow(r,4)-3*pow(r,2)*s;
+    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    
+    return (C*D*F*s*(2*A*fields_vect[1][ind_space]-3*C*pow(r,3)*fields_vect[2][ind_space])/pow(A,2)/H
+            +G*Dx[0](fields_vect[0],ind_space,dx)/B
+            +F*s*Dx[0](fields_vect[1],ind_space,dx)/B
+            );
+}
+
+double wave_eq_compactified_phi_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*(ind_space-gl);
+    return(fields_vect[0][ind_space]);
 }
 // ----------- // MODEL 1 // ----------- //
 
@@ -827,6 +854,9 @@ void no_boundary_conditions_phi(std::vector<std::vector<double>> &fields_vect_ne
     fields_vect_new[j][last_ind] = (fields_vect_old[0][last_ind]+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));
 }
 
+// compactified and rescaled wave equation//
+
+// R rescaling
 void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
@@ -869,6 +899,7 @@ void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect
     fields_vect_new[j][last_ind] = (right_value+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));    
 }
 
+// R rescaling
 void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
@@ -909,6 +940,7 @@ void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vec
     fields_vect_new[j][last_ind] = (right_value+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));    
 }
 
+// R rescaling
 void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
@@ -923,7 +955,106 @@ void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vec
 }
 
 
+// CHI RESCALING //
+void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+        
+    double r = dmin;
+    double A = pow(r,4) + pow(r,6) - 2 *pow(r,2)*s + pow(s,2);
+    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    double C = pow(r,2) - s;
+    double D = pow(r,2) - 3*s;
+    double F = pow(r,2) + s;
+    double G = pow(r,4)-3*pow(r,2)*s;
+    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    
+    
+    double left_value = C*pow(D,2)*r* (2*A*fields_vect_old[1][ind_space_left]-3*C*pow(r,3)*fields_vect_old[2][ind_space_left])/(pow(A,2)*B)
+            +F*s*Dx[0](fields_vect_old[0],ind_space_left,dx)/B
+            +G*Dx[0](fields_vect_old[1],ind_space_left,dx);
+    
+    r = dmax;
+    
+    A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
+    B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    C = pow(r,2) - s;
+    D = pow(r,2) - 3*s;
+    F = pow(r,2) + s;
+    G = pow(r,4)-3*pow(r,2)*s;
+    H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    
+    double right_value =C*pow(D,2)*r* (2*A*fields_vect_old[1][last_ind]-3*C*pow(r,3)*fields_vect_old[2][last_ind])/(pow(A,2)*B)
+            +F*s*Dx[0](fields_vect_old[0],last_ind,dx)/B 
+            +G*Dx[0](fields_vect_old[1],last_ind,dx);
+     
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value+artificial_diss(epsilon,ord,fields_vect_old,j,ind_space_left,dx,dt));
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));   
+}
 
+void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+        
+    double r = dmin;
+    double A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
+    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    double C = pow(r,2) - s;
+    double D = pow(r,2) - 3*s;
+    double F = pow(r,2) + s;
+    double G = pow(r,4)-3*pow(r,2)*s;
+    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    
+    
+    double left_value = C*D*F*s*(2*A*fields_vect_old[1][ind_space_left]-3*C*pow(r,3)*fields_vect_old[2][ind_space_left])/pow(A,2)/H
+            +G*Dx[0](fields_vect_old[0],ind_space_left,dx)/B
+            +F*s*Dx[0](fields_vect_old[1],ind_space_left,dx)/B;
+    
+    r = dmax;
+    
+    A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
+    B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
+    C = pow(r,2) - s;
+    D = pow(r,2) - 3*s;
+    F = pow(r,2) + s;
+    G = pow(r,4)-3*pow(r,2)*s;
+    H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    
+    double right_value = C*D*F*s*(2*A*fields_vect_old[1][last_ind]-3*C*pow(r,3)*fields_vect_old[2][last_ind])/pow(A,2)/H
+            +G*Dx[0](fields_vect_old[0],last_ind,dx)/B
+            +F*s*Dx[0](fields_vect_old[1],last_ind,dx)/B;
+     
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value+artificial_diss(epsilon,ord,fields_vect_old,j,ind_space_left,dx,dt));
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));   
+}
+
+void no_boundary_conditions_phi_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+        
+    double r = dmin;   
+    
+    double left_value = fields_vect_old[0][ind_space_left];
+    
+    r = dmax;
+
+    double right_value = fields_vect_old[0][last_ind];
+     
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value+artificial_diss(epsilon,ord,fields_vect_old,j,ind_space_left,dx,dt));
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value+artificial_diss(epsilon,ord,fields_vect_old,j,last_ind,dx,dt));   
+}
 // ------------- // MODEL 1 // ------------- //
 
 
