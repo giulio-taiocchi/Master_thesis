@@ -49,8 +49,8 @@ int main()
     
     std::vector<double(*)(double, double)> initial_conditions;
     initial_conditions.push_back(&initial_null);    //PI1
-    initial_conditions.push_back(&initial_gauss_PHI_compactified);        //PHI1       
-    initial_conditions.push_back(&initial_gauss_phi_compactified);        //phi1
+    initial_conditions.push_back(&initial_gauss_PHI_compactified_Chi);        //PHI1       
+    initial_conditions.push_back(&initial_gauss_phi_compactified_Chi);        //phi1
     //initial_conditions.push_back(&initial_null);        //PI2
     //initial_conditions.push_back(&initial_null);        //PHI2       
     //initial_conditions.push_back(&initial_unity);       //phi2

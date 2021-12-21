@@ -496,14 +496,23 @@ double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
     
-    double A = pow(r,4) + pow(r,6) - 2* pow(r,2)*s + pow(s,2);
-    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    double C = pow(r,2) - s;
-    double D = pow(r,2) - 3*s;
-    double F = pow(r,2) + s;
-    double G = pow(r,4)-3*pow(r,2)*s;
-    return (C*pow(D,2)*r* (2*A*fields_vect[1][ind_space]-3*C*pow(r,3)*fields_vect[2][ind_space])/(pow(A,2)*B)
-            +F*s*Dx[0](fields_vect[0],ind_space,dx)/B + G*Dx[0](fields_vect[1],ind_space,dx)
+    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    double C = r- s;
+    double D = pow(r,4) - 3*r*r*s*s;
+    double F = pow(r,2) + s*s;
+    double G = pow(r,2)-3*s*s;
+    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    double L = pow(r,3)*s - r* pow(s,3);
+    double M = pow(r,4) + r*r * s*s - pow(s,4);
+    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    double O = pow(r,4)-pow(s,4);
+    
+    return (2*M*r*s*s*fields_vect[1][ind_space]/A/B
+            +3*O*O*pow(s,4)*fields_vect[2][ind_space]/(pow(A,2)*B)
+            +D*Dx[0](fields_vect[0],ind_space,dx)/H
+            -N*r*r*s*s*Dx[0](fields_vect[1],ind_space,dx)/A/B
+            -pow(s,8)/A/B* 3* (pow((r+dx),2)*fields_vect[1][ind_space+1] - pow((r-dx),2)*fields_vect[1][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3))
             );
 }
 
@@ -512,23 +521,27 @@ double wave_eq_compactified_PHI_Chi(int ind_field,int ind_space,std::vector<std:
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
     
-    double A = pow(r,4) + pow(r,6) - 2* pow(r,2)*s + pow(s,2);
-    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    double C = pow(r,2) - s;
-    double D = pow(r,2) - 3*s;
-    double F = pow(r,2) + s;
-    double G = pow(r,4)-3*pow(r,2)*s;
-    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    double C = r- s;
+    double D = pow(r,4) - 3*r*r*s*s;
+    double F = pow(r,2) + s*s;
+    double G = pow(r,2)-3*s*s;
+    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    double L = pow(r,3)*s - r* pow(s,3);
+    double M = pow(r,4) + r*r * s*s - pow(s,4);
+    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    double O = pow(r,4)-pow(s,4);
     
-    return (C*D*F*s*(2*A*fields_vect[1][ind_space]-3*C*pow(r,3)*fields_vect[2][ind_space])/pow(A,2)/H
-            +G*Dx[0](fields_vect[0],ind_space,dx)/B
-            +F*s*Dx[0](fields_vect[1],ind_space,dx)/B
+    return ( 2*C*F*G*r*(r+s)*fields_vect[1][ind_space] /(A*B)
+            +(3*F*G*L*L*fields_vect[2][ind_space] )/(A*A*B)
+            +F*s*s*Dx[0](fields_vect[0],ind_space,dx)/H
+            +D*Dx[0](fields_vect[1],ind_space,dx)/H
             );
 }
 
 double wave_eq_compactified_phi_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
-    double r = dmin+dx*(ind_space-gl);
     return(fields_vect[0][ind_space]);
 }
 // ----------- // MODEL 1 // ----------- //
@@ -636,11 +649,12 @@ double initial_gauss_PHI_compactified(double x,double init_param)
 double initial_gauss_phi_compactified(double x,double init_param)
 {
     double s = 1;
-    double rate_of_square = pow(x,2)/pow(s,2);
+    double dev_std = 4;
+    double rate_of_square = pow(dev_std*x,2)/pow(s,2);
     double R = x/(1-rate_of_square);
     if(x!=s)
     {
-        return( -init_param *R*exp(-pow(R,2)));
+        return( -init_param *R*exp(-pow(dev_std*R,2)));
     }
     else
     {
@@ -652,6 +666,63 @@ double initial_gauss_PHI(double x,double init_param)
 {
     return(+2*x*init_param*exp(-pow(x,2)));
 }
+
+// ------ hyperboloidal compactification and Chi function rescaling  ------ //
+
+double initial_gauss_PI_compactified_Chi(double x,double init_param)
+{
+    double s = 5;
+    double rate_of_square = pow(x,2)/pow(s,2);
+    double R = x/(1-rate_of_square);
+    double Chi = pow(1+R*R,0.5);
+    if(x!=s)
+    {
+        return( -init_param * Chi*exp(-pow(R,2)));
+    }
+    else
+    {
+    return(0);
+    }
+}
+double initial_gauss_PHI_compactified_Chi(double x,double init_param)
+{
+    double s = 5;
+    double dev_std = 1;
+    double rate_of_square = pow(x,2)/pow(s,2);
+    double R = x/(1-rate_of_square);
+    double Chi = pow(1+R*R,0.5);
+    double ChiPrime = R /Chi;
+
+    if(x!=s)
+    {
+        return( ChiPrime*init_param *exp(-pow(dev_std*R,2))+Chi*(init_param*(-2*dev_std*R)*exp(-pow(dev_std*R,2))) );
+    }
+    else
+    {
+    return(0);
+    }
+}
+
+double initial_gauss_phi_compactified_Chi(double x,double init_param)
+{
+    double s = 5;
+    double dev_std = 1;
+    double rate_of_square = pow(x,2)/pow(s,2);
+    double R = x/(1-rate_of_square);
+    double Chi = pow(1+R*R,0.5);
+
+    if(x!=s)
+    {
+        return( init_param*Chi*exp(-pow(dev_std*R,2)));
+    }
+    else
+    {
+        return(0);
+    }
+}
+
+
+// ------  ------  ------  ------  ------  ------  ------  ------  ------  ------
 
 double initial_gauss_function(double x,double init_param) 
 {
@@ -956,6 +1027,8 @@ void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vec
 
 
 // CHI RESCALING //
+
+
 void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
@@ -963,33 +1036,45 @@ void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_
     double s = param[0]; 
         
     double r = dmin;
-    double A = pow(r,4) + pow(r,6) - 2 *pow(r,2)*s + pow(s,2);
-    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    double C = pow(r,2) - s;
-    double D = pow(r,2) - 3*s;
-    double F = pow(r,2) + s;
-    double G = pow(r,4)-3*pow(r,2)*s;
-    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    double C = r- s;
+    double D = pow(r,4) - 3*r*r*s*s;
+    double F = pow(r,2) + s*s;
+    double G = pow(r,2)-3*s*s;
+    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    double L = pow(r,3)*s - r* pow(s,3);
+    double M = pow(r,4) + r*r * s*s - pow(s,4);
+    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    double O = pow(r,4)-pow(s,4);
     
     
-    double left_value = C*pow(D,2)*r* (2*A*fields_vect_old[1][ind_space_left]-3*C*pow(r,3)*fields_vect_old[2][ind_space_left])/(pow(A,2)*B)
-            +F*s*Dx[0](fields_vect_old[0],ind_space_left,dx)/B
-            +G*Dx[0](fields_vect_old[1],ind_space_left,dx);
+    double left_value = 2*M*r*s*s*fields_vect_old[1][ind_space_left]/A/B
+            +3*O*O*pow(s,4)*fields_vect_old[2][ind_space_left]/(pow(A,2)*B)
+            +D*Dx[0](fields_vect_old[0],ind_space_left,dx)/H
+            -N*r*r*s*s*Dx[0](fields_vect_old[1],ind_space_left,dx)/A/B
+            -pow(s,8)/A/B* 3* (pow((r+dx),2)*fields_vect_old[1][ind_space_left+1] - pow((r-dx),2)*fields_vect_old[1][ind_space_left-1] )/(pow((r+dx),3)-pow((r-dx),3));
     
     r = dmax;
     
-    A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
-    B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    C = pow(r,2) - s;
-    D = pow(r,2) - 3*s;
-    F = pow(r,2) + s;
-    G = pow(r,4)-3*pow(r,2)*s;
-    H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    C = r- s;
+    D = pow(r,4) - 3*r*r*s*s;
+    F = pow(r,2) + s*s;
+    G = pow(r,2)-3*s*s;
+    H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    L = pow(r,3)*s - r* pow(s,3);
+    M = pow(r,4) + r*r * s*s - pow(s,4);
+    N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    O = pow(r,4)-pow(s,4);
     
-    double right_value =C*pow(D,2)*r* (2*A*fields_vect_old[1][last_ind]-3*C*pow(r,3)*fields_vect_old[2][last_ind])/(pow(A,2)*B)
-            +F*s*Dx[0](fields_vect_old[0],last_ind,dx)/B 
-            +G*Dx[0](fields_vect_old[1],last_ind,dx);
-     
+    double right_value =2*M*r*s*s*fields_vect_old[1][ind_space_left]/A/B
+            +3*O*O*pow(s,4)*fields_vect_old[2][last_ind]/(pow(A,2)*B)
+            +D*Dx[0](fields_vect_old[0],last_ind,dx)/H
+            -N*r*r*s*s*Dx[0](fields_vect_old[1],last_ind,dx)/A/B
+            -pow(s,8)/A/B* 3* (pow((r+dx),2)*fields_vect_old[1][last_ind+1] - pow((r-dx),2)*fields_vect_old[1][last_ind-1] )/(pow((r+dx),3)-pow((r-dx),3));
+
     //left no boundary
     fields_vect_new[j][ind_space_left] = (left_value+artificial_diss(epsilon,ord,fields_vect_old,j,ind_space_left,dx,dt));
     //right no boundary
@@ -1003,32 +1088,43 @@ void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields
     double s = param[0]; 
         
     double r = dmin;
-    double A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
-    double B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    double C = pow(r,2) - s;
-    double D = pow(r,2) - 3*s;
-    double F = pow(r,2) + s;
-    double G = pow(r,4)-3*pow(r,2)*s;
-    double H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    double C = r- s;
+    double D = pow(r,4) - 3*r*r*s*s;
+    double F = pow(r,2) + s*s;
+    double G = pow(r,2)-3*s*s;
+    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    double L = pow(r,3)*s - r* pow(s,3);
+    double M = pow(r,4) + r*r * s*s - pow(s,4);
+    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    double O = pow(r,4)-pow(s,4);
+    //cout<<" A B C D F G L"<<A<<";"<<B<<";"<<C<<";"<<D<<";"<<F<<";"<<G<<";"<<L<<endl;
+
     
-    
-    double left_value = C*D*F*s*(2*A*fields_vect_old[1][ind_space_left]-3*C*pow(r,3)*fields_vect_old[2][ind_space_left])/pow(A,2)/H
-            +G*Dx[0](fields_vect_old[0],ind_space_left,dx)/B
-            +F*s*Dx[0](fields_vect_old[1],ind_space_left,dx)/B;
+    double left_value =  2*C*F*G*r*(r+s)*fields_vect_old[1][ind_space_left] /(A*B)
+            +(3*F*G*L*L*fields_vect_old[2][ind_space_left] )/(A*A*B)
+            +F*s*s*Dx[0](fields_vect_old[0],ind_space_left,dx)/H
+            +D*Dx[0](fields_vect_old[1],ind_space_left,dx)/H;
     
     r = dmax;
     
-    A = pow(r,4) + pow(r,6) - 2 * pow(r,2)*s + pow(s,2);
-    B = pow(r,4) - 4 * pow(r,2)* s - pow(s,2);
-    C = pow(r,2) - s;
-    D = pow(r,2) - 3*s;
-    F = pow(r,2) + s;
-    G = pow(r,4)-3*pow(r,2)*s;
-    H = pow(r,5)-4*pow(r,3)*s-r*pow(s,2);
+    A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
+    B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
+    C = r- s;
+    D = pow(r,4) - 3*r*r*s*s;
+    F = pow(r,2) + s*s;
+    G = pow(r,2)-3*s*s;
+    H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
+    L = pow(r,3)*s - r* pow(s,3);
+    M = pow(r,4) + r*r * s*s - pow(s,4);
+    N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
+    O = pow(r,4)-pow(s,4);
     
-    double right_value = C*D*F*s*(2*A*fields_vect_old[1][last_ind]-3*C*pow(r,3)*fields_vect_old[2][last_ind])/pow(A,2)/H
-            +G*Dx[0](fields_vect_old[0],last_ind,dx)/B
-            +F*s*Dx[0](fields_vect_old[1],last_ind,dx)/B;
+    double right_value =  2*C*F*G*r*(r+s)*fields_vect_old[1][last_ind] /(A*B)
+            +(3*F*G*L*L*fields_vect_old[2][last_ind] )/(A*A*B)
+            +F*s*s*Dx[0](fields_vect_old[0],last_ind,dx)/H
+            +D*Dx[0](fields_vect_old[1],last_ind,dx)/H;
      
     //left no boundary
     fields_vect_new[j][ind_space_left] = (left_value+artificial_diss(epsilon,ord,fields_vect_old,j,ind_space_left,dx,dt));
@@ -1339,6 +1435,35 @@ void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,dou
     }
 }
 
+void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    int S = field_vect[j].size();
+    // attachment of the ghost points to the boundary of the function
+    // PI is even
+    if (j==0 || j==2)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    
+    // PHI is odd
+    if (j==1)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = -1.*field_vect[j][2*gl-i];
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = field_vect[j][i] = (2*field_vect[j][i-1]-field_vect[j][i-2]);
+    }
+    
+}
+
 void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
 {
     int S = field_vect[j].size();
@@ -1361,10 +1486,97 @@ void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<
         }
     }
     
-    for (int i=S-gr; i<S;i++)
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
     {
-        field_vect[j][i] = (field_vect[j][i-1]+(+25./12.*field_vect[j][i-1]-4.*field_vect[j][i-2]+3.*field_vect[j][i-3]-4./3.*field_vect[j][i-4]+1./4.*field_vect[j][i-5]));
+        field_vect[j][i] = +1./24.*(109*field_vect[j][i-1]-194.*field_vect[j][i-2]+170.*field_vect[j][i-3]-76.*field_vect[j][i-4]+17.*field_vect[j][i-5]-2.*field_vect[j][i-6]);
     }
+}
+
+void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    int S = field_vect[j].size();
+    // attachment of the ghost points to the boundary of the function
+    // PI is even
+    if (j==0 || j==2)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    
+    // PHI is odd
+    if (j==1)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = -1.*field_vect[j][2*gl-i];
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = field_vect[j][i-1]+(4*field_vect[j][i-1]-7.*field_vect[j][i-1-1]+4.*field_vect[j][i-1-2]-field_vect[j][i-1-3])/2;
+    }
+    
+}
+
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    int S = field_vect[j].size();
+    // attachment of the ghost points to the boundary of the function
+    // PI is even
+    if (j==0 || j==2)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    
+    // PHI is odd
+    if (j==1)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = -1.*field_vect[j][2*gl-i];
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = 4.*field_vect[j][i-1]-6*field_vect[j][i-2]+4.*field_vect[j][i-3]-field_vect[j][i-4];
+    }
+    
+}
+
+void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    int S = field_vect[j].size();
+    // attachment of the ghost points to the boundary of the function
+    // PI is even
+    if (j==0 || j==2)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    
+    // PHI is odd
+    if (j==1)
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = -1.*field_vect[j][2*gl-i];
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = field_vect[j][i-1]+(4*field_vect[j][i-1]-7.*field_vect[j][i-1-1]+4.*field_vect[j][i-1-2]-field_vect[j][i-1-3])/2;
+    }
+    
 }
 
 void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
