@@ -3,13 +3,21 @@
 #include <fstream>
 #include<vector>
 #include <math.h>
-#include "myfunctions.h"
+#include "myfunctions_parallel_ver.h"
 #include "spline.h"
 using namespace std;
 
 int main() 
 {
+    // set the decimal numbers precision of the output
      cout.precision(10);
+     
+    // calling the mpi initialization function
+    int mynode, totalnodes;
+    MPI_Status status;
+    MPI_Init(&argc,&argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &totalnodes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mynode);
     
     // declare the path where the input/output files are collected   
     string file_path = "./data/hyperboloidal_wave_equation/data3/"; 
@@ -88,6 +96,7 @@ int main()
     // setting the derivative operators vector
     std::vector<double (*)(std::vector<double>,int,double)> Dx;
     Dx.push_back(&first_der_second_order_centered);
+    
     
     
     

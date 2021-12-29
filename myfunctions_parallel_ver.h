@@ -1,10 +1,11 @@
 #include <math.h>
 #include <fstream>
 #include <sstream>
+#include <mpi.h>
 #include "spline.h"
 using namespace std;
 
-typedef void (*print_function)(std::vector< std::vector<double> > fields_vect, double dmin, double dx, string name_file,string name_folder, int gl, int gr);
+typedef void (*print_function)(std::vector< std::vector<double> > fields_vect, double dmin,double dmax, double dx, string name_file,string name_folder, int gl, int gr);
 
 
 typedef double (*artificial_dissipation_function)(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt) ;
@@ -95,7 +96,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
             //myfile<<t<<"\n";
             //myfile.close();
             cout<<"print the fields at time"<<t<<endl;
-            print_f(fields_vect,dmin,dx,file_path,file_path,gl,gr); // the print_f function is called
+            print_f(fields_vect,dmin,dmax,dx,file_path,file_path,gl,gr); // the print_f function is called
             //cout<<t<<endl;
         }
         fields_vect = one_step(fields_vect,dmin,dmax,dx,param,dt,R_vect,bc,t,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon,Dx,ord);
@@ -109,106 +110,11 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
 }
 
 
-
-
-
-/*
-void onestep_RK1_1(std::vector< std::vector<double> > &fields_vect,double dmin,double dmax,double dx,std::vector<double> &param, double dt, std::vector< evolution_function > &evo,std::vector< boundary_conditions_function > &bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx)  
-{
-    //cout<<"size: "<<fields_vect[0].size()<<endl;
-    std::vector<double> support;
-    int N = fields_vect.size();
-     we copy the field vector, we will use it at the end of the function
-    /*
-    std::vector<std::vector<double>> copy_fields_vect;
-    for (int j=0; j <N; j++)
-    {
-        copy_fields_vect.push_back(support);
-        for (int i=0;i<fields_vect[j].size();i++)
-        {
-            copy_fields_vect[j].push_back(fields_vect[j][i]);
-        }
-    }  
-    // A second order Kreis Oliger artificial dissipation is used
-    
-    
-    if (ord>gl)
-    {
-        gl = ord;
-    }
-    if(ord>gr)
-    {
-        gr = ord;
-    }
-    
-    
-    
-    
-    std::vector<std::vector<double>> k1;
-    /*
-    // populate the ghost zone of the fields, we need them to calculate k1
-    for (int j=0; j <N; j++)
-    {
-        ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
-    }
-    
-    // k1 building
-    for (int j=0; j <N; j++)
-    {
-        k1.push_back(support);
-        // evualuating the "bulk" of k1
-        // we have to consider the physical domain of the fields (so exclude the GP) and then exclude the boundaries value (+1 and -1)
-        for (int i=gl+1;i<(fields_vect[j].size()-1)-gr;i++)
-        {
-            
-            k1[j].push_back(dt*evo[j](j,i,fields_vect,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl));
-        }
-        //cout<<"prima k1: "<<k1[j].size()<<endl;
-        // evaluating the boundary of k1
-        bc[j](k1,fields_vect, t,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param);
-        //cout<<"dopo k1: "<<k1[j].size()<<endl;
-
-
-        //cout<<"size k1: "<<k1[j].size()<<"\nsize field vector: "<<fields_vect[j].size()<<endl;
-        
-        
-    }
-    
-    
-    // we create a new vector that contains all the new fields. It is a support vector that will be swapped with the old one
-    
-    std::vector< std::vector<double> > new_fields_vect;
-        
-    for (int j=0; j <N; j++)
-    {
-        new_fields_vect.push_back(support);
-        for (int i=0;i<k1[j].size();i++)
-        {
-            new_fields_vect[j].push_back(fields_vect[j][i+gl] + k1[j][i+gl]);
-        }
-    }  
-    
-    
-    //cout<<"old "<<fields_vect[0].size()<<"new "<<new_fields_vect[0].size()<<endl;
-    for (int j=0; j <N; j++)
-    {
-        for (int i=0;i<k1[j].size();i++)
-        {
-            fields_vect[j][i]=new_fields_vect[j][i];
-        }
-    }
-    //new_fields_vect.swap(fields_vect);
-    
-}*/
-
 vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_vect,double dmin,double dmax,double dx,std::vector<double> param, double dt, std::vector< evolution_function > evo,std::vector< boundary_conditions_function > bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx,int ord)  
 {
-    //cout<<"size: "<<fields_vect[0].size()<<endl;
+    
     int N = fields_vect.size();
-    //cout<<"number of fields:"<<N<<endl;
     int S =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
-    //cout<<"S: "<<S<<endl;
-    // A second order Kreis Oliger artificial dissipation is used
     
     vector<vector<double>> k1(N, vector<double>(S)) ;
     std::vector<std::vector<double>> support_k1(N, vector<double>(S));
@@ -219,33 +125,75 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     std::vector<std::vector<double>> k4(N, vector<double>(S));
     std::vector<std::vector<double>> support_k4(N, vector<double>(S));
        
+    double index_dmin_local,index_dmax_local;
+        
+    // defining the first and last spatial index of the domain, the actual process will work inside this range
+        
+    index_min_local = (gl+1) + mynode * int((S-2-gl-gr)/totalnodes);
+    if (mynode==totalnodes-1)
+    {
+        index_dmax_local =  S-1-gr;
+    }
+    else
+    {
+        index_dmax_local = (gl+1) + (mynode+1) * int((S-2-gl-gr)/totalnodes);
+    }
+    
+    /*
     // populate the ghost zone of the fields, we need them to calculate k1
     for (int j=0; j <N; j++)
     {
         ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
     }
+    */
     // k1 building
     for (int j=0; j <N; j++)
     {
         // evualuating the "bulk" of k1
         // we have to consider the physical domain of the fields (so exclude the GP) and then exclude the boundaries value (+1 and -1)
-        for (int i=gl+1;i<(fields_vect[j].size()-1)-gr;i++)
+        // we are also dividing the spatial domain in subdomains, in which each processor run in parallel
+        
+        // calculating the k1 function (just in the interval associated to the actual processor)
+        for (int i=index_min_local;i<index_max_local;i++)
         {
             k1[j][i] = (evo[j](j,i,fields_vect,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl)  
                             +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt));
         }
-        //cout<<"prima k1: "<<k1[j].size()<<endl;
+        
+        // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
+        // each processor needs to receive (and send) the borders of its subdomain
+        
+        if(mynode==0)
+        {
+            MPI_Sendrecv(&(k1[j][index_dmax_local-1]),nitems, MPI_DOUBLE, mynode+1,
+           0, &(k1[j][index_dmax_local]), nitems, MPI_DOUBLE, mynode+1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode==totalnodes-1)
+        {
+            MPI_Sendrecv(&(k1[j][index_dmin_local]),nitems, MPI_DOUBLE, mynode-1,
+           0, &(k1[j][index_dmin_local-1]), nitems, MPI_DOUBLE, mynode-1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode!=0 && mynode!=totalnodes-1)
+        {
+            MPI_Send(&k1[j][index_dmax_local-1],nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD);
+            MPI_Send(&k1[j][index_dmin_local],nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD);
+            MPI_Recv(&(k1[j][index_dmax_local]),nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD, &status);
+            MPI_Recv(&(k1[j][index_dmin_local-1]),nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD, &status);
+        }
+        
+        
+        
         // evaluating the boundary of k1
         bc[j](k1,fields_vect, t,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param);
-        //cout<<"dopo k1: "<<k1[j].size()<<endl;
 
+        // GP extrapolation for k1 vector
         ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
-        //cout<<"post extr k1:"<<k1[j].size()<<endl;
 
-        //cout<<"k1"<< k1.size()<<endl;
-    // computing the argument for the next coefficient ki
+    // computing the argument for the next coefficient k2
     
-        for (int i=0;i<k1[j].size();i++)
+        for (int i=index_min_local-1;i<index_max_local+1;i++)
         {
             support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];
         }
@@ -256,42 +204,83 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     // k2 building
     for (int j=0; j <N; j++)
     {
-        for (int i=1+gl;i<(support_k1[j].size()-1-gr);i++)
+        for (int i=index_min_local;i<index_max_local;i++)
         {
             k2[j][i] = (evo[j](j,i,support_k1,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt,gl)+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt));
         }
+        
+        // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
+        // each processor needs to receive (and send) the borders of its subdomain
+        
+        if(mynode==0)
+        {
+            MPI_Sendrecv(&(k2[j][index_dmax_local-1]),nitems, MPI_DOUBLE, mynode+1,
+           0, &(k2[j][index_dmax_local]), nitems, MPI_DOUBLE, mynode+1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode==totalnodes-1)
+        {
+            MPI_Sendrecv(&(k2[j][index_dmin_local]),nitems, MPI_DOUBLE, mynode-1,
+           0, &(k2[j][index_dmin_local-1]), nitems, MPI_DOUBLE, mynode-1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode!=0 && mynode!=totalnodes-1)
+        {
+            MPI_Send(&k2[j][index_dmax_local-1],nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD);
+            MPI_Send(&k2[j][index_dmin_local],nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD);
+            MPI_Recv(&(k2[j][index_dmax_local]),nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD, &status);
+            MPI_Recv(&(k2[j][index_dmin_local-1]),nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD, &status);
+        }
+        
         //cout<<"prima k2:"<<k2[j].size()<<endl;
         bc[j](k2,support_k1, t+dt/2.,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param);
         //cout<<"dopo k2:"<<k2[j].size()<<endl;
         
         ghost_point_extrapolation(k2, t+dt/2.,dx,dt,j,gl,gr,dmin,dmax);
         //cout<<"post extr k2:"<<k2[j].size()<<endl;
-        for (int i=0;i<k2[j].size();i++)
+        for (int i=index_min_local-1;i<index_max_local+1;i++)
         {
             support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];
         }
     
     }
-    /*
-    // populate the ghost zone of support k2, we need them to calculate k3
-    for (int j=0; j <N; j++)
-    {
-        ghost_point_extrapolation(support_k2, t+dt/2,dx,dt,j,gl,gr,dmin,dmax);
-    }    
-    */
+    
     // k3 building
     for (int j=0; j <N; j++)
     {
-        for (int i=gl+1;i<(k2[j].size()-1)-gr;i++)
+        for (int i=index_min_local;i<index_max_local;i++)
         {
             k3[j][i] = (evo[j](j,i,support_k2,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt,gl)+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt));
+        }
+        
+        // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
+        // each processor needs to receive (and send) the borders of its subdomain
+        
+        if(mynode==0)
+        {
+            MPI_Sendrecv(&(k3[j][index_dmax_local-1]),nitems, MPI_DOUBLE, mynode+1,
+           0, &(k3[j][index_dmax_local]), nitems, MPI_DOUBLE, mynode+1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode==totalnodes-1)
+        {
+            MPI_Sendrecv(&(k3[j][index_dmin_local]),nitems, MPI_DOUBLE, mynode-1,
+           0, &(k3[j][index_dmin_local-1]), nitems, MPI_DOUBLE, mynode-1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode!=0 && mynode!=totalnodes-1)
+        {
+            MPI_Send(&k3[j][index_dmax_local-1],nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD);
+            MPI_Send(&k3[j][index_dmin_local],nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD);
+            MPI_Recv(&(k3[j][index_dmax_local]),nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD, &status);
+            MPI_Recv(&(k3[j][index_dmin_local-1]),nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD, &status);
         }
         bc[j](k3,support_k2, t+dt/2.,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param);
         
         
         ghost_point_extrapolation(k3, t+dt/2.,dx,dt,j,gl,gr,dmin,dmax);
         
-        for (int i=0;i<k3[j].size();i++)
+        for (int i=index_min_local-1;i<index_max_local+1;i++)
         {
             support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];
         }
@@ -301,9 +290,31 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     // k4 building    
     for (int j=0; j <N; j++)
     {
-        for (int i=gl+1;i<(k3[j].size()-1-gr);i++)
+        for (int i=index_min_local;i<index_max_local;i++)
         {
             k4[j][i] = evo[j](j,i,support_k3,dx,dmin,param,t+dt,Dx,artificial_diss,epsilon,ord,dt,gl)+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
+        }
+        // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
+        // each processor needs to receive (and send) the borders of its subdomain
+        
+        if(mynode==0)
+        {
+            MPI_Sendrecv(&(k3[j][index_dmax_local-1]),nitems, MPI_DOUBLE, mynode+1,
+           0, &(k3[j][index_dmax_local]), nitems, MPI_DOUBLE, mynode+1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode==totalnodes-1)
+        {
+            MPI_Sendrecv(&(k3[j][index_dmin_local]),nitems, MPI_DOUBLE, mynode-1,
+           0, &(k3[j][index_dmin_local-1]), nitems, MPI_DOUBLE, mynode-1,  0, MPI_COMM_WORLD, &status);
+        }
+        
+        if(mynode!=0 && mynode!=totalnodes-1)
+        {
+            MPI_Send(&k3[j][index_dmax_local-1],nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD);
+            MPI_Send(&k3[j][index_dmin_local],nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD);
+            MPI_Recv(&(k3[j][index_dmax_local]),nitems,MPI_DOUBLE,mynode+1,0,MPI_COMM_WORLD, &status);
+            MPI_Recv(&(k3[j][index_dmin_local-1]),nitems,MPI_DOUBLE,mynode-1,0,MPI_COMM_WORLD, &status);
         }
         bc[j](k4,support_k3, t+dt,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param);
         
@@ -315,67 +326,21 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
 
     for (int j=0; j <N; j++)
     {
-        for (int i=0;i<k4[j].size();i++)
+        for (int i=index_min_local;i<index_max_local;i++)
         {
             new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.;
         }
-    }    
+    }   
+    // populate the ghost zone of the fields, we need them to calculate k1
+    for (int j=0; j <N; j++)
+    {
+        ghost_point_extrapolation(new_fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
+    }
     //cout<<"old "<<fields_vect.size()<<"new "<<new_fields_vect.size()<<endl;
     return(new_fields_vect);
 }
 
-/*
-// runge kutta integrator for a system of equations as dy/dx=F
-// where dy/dx and F are vectors
-// input: F( vec(y_0,.....,y_n),x), y -> vector with initial values of y in different point (x), extreme of the integral [dmin,dmax], increment dx
-void RK4(std::vector<double> y,std::vector<double(*)(std::vector<double>,double)> &F, double dmin, double dmax, double dx)
-{
-    
-    std::vector<double> k1;
-    std::vector<double> support_k1;
-    std::vector<double> k2;
-    std::vector<double> support_k2;
-    std::vector<double> k3;
-    std::vector<double> support_k3;
-    std::vector<double> k4;
-    std::vector<double> support_k4;
-    
-    int N = y.size();
-    for (double x=dmin; x<=dmax; x=x+dx )
-    {
-        for (int i=0;i<N;i++)
-        {
-            k1.push_back(dx*F[i](y,x));
-            support_k1.push_back(k1[i]/2+y[i]);
-        }
-        
-        for (int i=0;i<N;i++)
-        {
-            k2.push_back(dx*F[i](support_k1,x+dx/2));
-            support_k2.push_back(k2[i]/2+y[i],x+dx/2);
-        }
-        
-        for (int i=0;i<N;i++)
-        {
-            k3.push_back(dx*F[i](support_k2,x+dx/2));
-            support_k3.push_back(k3[i]+y[i]);
-        }
-        
-        for (int i=0;i<N;i++)
-        {
-            k4.push_back(dx*F[i](support_k3,x+dx));
-        }
-        
-        std::vector new_y;
-        for (int i=0;i<N;i++)
-        {
-            new_y.push_back(y[i]+(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6);
-        }
-    }
-    
-}
 
-*/
 
 // ------------ TYPES OF D.E. --------------- //
 
@@ -800,7 +765,7 @@ vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std
     
     for(int n=0;n<N;n++)
     {
-        for(double j=gl;j < S-gr ;j=j+1)
+        for(double j=0;j < S ;j=j+1)
         {
             double val = d_min+dx*(j-gl);
             //cout<< j <<"\n";
@@ -1780,9 +1745,22 @@ void diff_vector(std::vector<double> &diff,std::vector<double> &vec1, std::vecto
 
 
 
-void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double dx, string name_file,string name_folder, int gl, int gr)
+void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double dmax double dx, string name_file,string name_folder, int gl, int gr)
 {
-    
+    int S =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
+    double index_dmin_local,index_dmax_local;
+        
+    // defining the first and last spatial index of the domain, the actual process will work inside this range
+        
+    index_min_local = (gl+1) + mynode * int((S-2-gl-gr)/totalnodes);
+    if (mynode==totalnodes-1)
+    {
+        index_dmax_local =  S-1-gr;
+    }
+    else
+    {
+        index_dmax_local = (gl+1) + (mynode+1) * int((S-2-gl-gr)/totalnodes);
+    }
     ofstream myfile_print_f;
     myfile_print_f.open (name_file,ios::app);
     // headers of the columns
@@ -1794,7 +1772,7 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
     myfile_print_f << "field"<<to_string(fields_vect.size()-1)<<"\n";
     
     // for every spatial point
-    for (int j=0; j<fields_vect[0].size();j= j+1)
+    for (int j=index_min_local; j<index_dmax_local; j= j+1)
     {
         myfile_print_f << dmin+dx*double(j-gl)<<",";
         // for every fields add the relative value
@@ -1806,7 +1784,6 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
         myfile_print_f<<"\n";
     
     }
-    //cout<<" field0"<<"= "<< fields_vect[0][fields_vect[0].size()-1]<<endl;
     
     myfile_print_f.close();
 }

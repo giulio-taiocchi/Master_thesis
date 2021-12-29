@@ -64,8 +64,6 @@ def self_conv_test_spherical(vect1, vect2, vect3,gl,gr,field):
     x1 = tuple(vect1['x'][gl:-gr])
     x2 = tuple(vect2['x'][gl:-gr])
     #dx3 = vect3['x'][1]-vect3['x'][0]
-    dmin = vect1['x'][0]
-    dmax = vect1['x'][vect1['x'].size-1]
     norm_diff_1 = spherical_norm(np.subtract(field1,field2[::2]),x1,dx1)
     norm_diff_2 = spherical_norm(np.subtract(field2,field3[::2]),x2,dx2)
     return(np.log(norm_diff_1/norm_diff_2)/np.log(2.0))
@@ -75,11 +73,6 @@ def self_conv_test_pw(vect1, vect2, vect3,gl,gr,field):
     field1 = tuple(vect1[field][gl:-gr])
     field2 = tuple(vect2[field][gl:-gr])
     field3 = tuple(vect3[field][gl:-gr])
-    dx1 = vect1['x'][1]-vect1['x'][0]
-    dx2 = vect2['x'][1]-vect2['x'][0]
-    #dx3 = vect3['x'][1]-vect3['x'][0]
-    dmin = vect1['x'][0]
-    dmax = vect1['x'][vect1['x'].size-1]
     diff_1 = np.subtract(field1,field2[::2])
     diff_2 = np.subtract(field2[::2],field3[::4])
     return(diff_1,4*diff_2)
