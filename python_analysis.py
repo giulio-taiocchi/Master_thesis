@@ -1,6 +1,7 @@
 # support function to perform data analysis #
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
     
@@ -96,6 +97,7 @@ def spherical_norm(vect,x,dx):
     return (norm)
     
     
+    
 def sin_func(x,t):
     return(np.sin(x+t))
 
@@ -117,12 +119,21 @@ def model1_gaussian_solution(x,t,a):
 
 def model3_gaussian_solution(x,t,a):
     return(np.sin(np.log(1+(-a/4*(np.exp(-1*(t+x)**2)-np.exp(-1*(t-x)**2) )  /x) )))
+
+#def model3_PI_gaussian_solution(x,t,a):
+ #   return(np.sin(np.log(1+(-a/4*(np.exp(-1*(t+x)**2)-np.exp(-1*(t-x)**2) )  /x) )))
+    
+    
+def hyperbolic_chi_we_solution(r,t,a,ds,s):
+    return(-a*np.exp(-ds**2*(-r+t)**2)+a*np.exp(-ds**2*(r**3+r*s**2-r**2*t+s**2*t)**2/(r**2-s**2)**2)*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/r)
     
 def initialize_func_vect(func,domain,dx,t):
     vect = []
     for x in domain:
         vect.append(func(x,t))
     return(vect)
+
+
 
 # big_DF[ind_run][ind_dx][ind_time][ind_field]
 def runs_maximums_vector(vectors,ind_dx,field):
@@ -148,6 +159,84 @@ def self_similar_cordinates(space_vector, time_vector):
             x.append(space_vector[i]/time_vector[t])
         X.append(x)
     return(X,T)
+def read_parallel_data(d_max,d_min,gl,gr,domain_lenght,h1,h2,h3,number_of_proc,number_steps,names):
+    big_DF_sup=[]
+    S = []
+    for dx in [h1,h2,h3]:
+        S.append(int( ((d_max+dx*gr)-(d_min-dx*gl) +dx/2 ) / dx) + 1)
+    print(S)
+    N_point1 = int((S[0]-2-gl-gr)/number_of_proc)
+    N_point2 = int((S[1]-2-gl-gr)/number_of_proc)
+    N_point3 = int((S[2]-2-gl-gr)/number_of_proc)
+    # the processor zero has gl+1 ponts more: the left ghost points and the left boundary
+    N_point1_zero = N_point1+gl+1
+    N_point2_zero = N_point2+gl+1
+    N_point3_zero = N_point3+gl+1
+    
+    N_point1_last = S[0]-1-gr-gl-1-(number_of_proc-1)*int((S[0]-2-gl-gr)/number_of_proc)+gr+1
+    N_point2_last = S[1]-1-gr-gl-1-(number_of_proc-1)*int((S[1]-2-gl-gr)/number_of_proc)+gr+1
+    N_point3_last = S[2]-1-gr-gl-1-(number_of_proc-1)*int((S[2]-2-gl-gr)/number_of_proc)+gr+1
+    print(N_point1,N_point1_zero,N_point1_last)
+    '''
+    N_point1 = int((int(domain_lenght/h1-2))/number_of_proc)
+    N_point2 = int((int(domain_lenght/h2-2))/number_of_proc)
+    N_point3 = int((int(domain_lenght/h3-2))/number_of_proc)
+    
+    N_point1_last = N_point1+6
+    N_point2_last = N_point2+6
+    N_point3_last = N_point3+6
+    '''
+    total_point_zero = (N_point1_zero+1)*(number_steps+1)+ (N_point2_zero+1)*(number_steps+1)+(N_point3_zero+1)*number_steps+N_point3_zero
+    total_point_others = (N_point1+1)*(number_steps+1)+ (N_point2+1)*(number_steps+1)+(N_point3+1)*number_steps+N_point3
+    total_point_last = (N_point1_last+1)*(number_steps+1)+ (N_point2_last+1)*(number_steps+1)+(N_point3_last+1)*number_steps+N_point3_last
+    total_points_vec = [total_point_zero]
+    for n_proc in range (1,number_of_proc-1):
+        total_points_vec.append(total_point_last)
+    total_points_vec.append(total_point_last)
+    DF_concatenated = []
+    for n in range (0, len(names[:]),number_of_proc):
+        DF_support = pd.read_csv(names[n] )
+        #print(DF_support['x'][0]*2)
+        for n_proc in range (1,number_of_proc):
+            DF_support = pd.concat([DF_support,pd.read_csv(names[n+n_proc])])
+        DF_concatenated.append(DF_support)
+
+    for n in range (0, len(DF_concatenated[:])):
+        for n_proc in range (0,number_of_proc):
+            DF1, DF2, DF3 = [], [], []
+            for i in range (0,number_steps):
+                if(n_proc==0):
+                    DF1.append( DF_concatenated[n][(N_point1_zero+1)*i:(N_point1_zero+1)*i+N_point1_zero].astype(float))
+                    DF2.append( DF_concatenated[n][(N_point1_zero+1)*(number_steps+1)+ (N_point2_zero+1)*i : (N_point1_zero+1)*(number_steps+1)+ (N_point2_zero+1)*i+N_point2_zero].astype(float) )
+                    DF3.append( DF_concatenated[n][(N_point1_zero+1)*(number_steps+1)+ (N_point2_zero+1)*(number_steps+1)+(N_point3_zero+1)*i  :  (N_point1_zero+1)*(number_steps+1)+ (N_point2_zero+1)*(number_steps+1)+(N_point3_zero+1)*i+N_point3_zero].astype(float))
+                if(n_proc==number_of_proc-1):
+                    DF1.append(DF_concatenated[n][(N_point1_last+1)*i+total_point_others*(n_proc-1)+total_point_zero:(N_point1_last+1)*i+N_point1_last+total_point_others*(n_proc-1)+total_point_zero].astype(float))
+                    DF2.append( DF_concatenated[n][(N_point1_last+1)*(number_steps+1)+ (N_point2_last+1)*i +total_point_others*(n_proc-1)+total_point_zero: (N_point1_last+1)*(number_steps+1)+ (N_point2_last+1)*i+N_point2_last+total_point_others*(n_proc-1)+total_point_zero].astype(float) )
+                    DF3.append( DF_concatenated[n][(N_point1_last+1)*(number_steps+1)+ (N_point2_last+1)*(number_steps+1)+(N_point3_last+1)*i+total_point_others*(n_proc-1)+total_point_zero:(N_point1_last+1)*(number_steps+1)+ (N_point2_last+1)*(number_steps+1)+(N_point3_last+1)*i+N_point3_last+total_point_others*(n_proc-1)+total_point_zero].astype(float))
+                if(n_proc==1 and n_proc!=number_of_proc-1):
+                    DF1.append(DF_concatenated[n][(N_point1+1)*i+total_point_zero:(N_point1+1)*i+N_point1+total_point_zero].astype(float))
+                    DF2.append(DF_concatenated[n][(N_point1+1)*(number_steps+1)+ (N_point2+1)*i +total_point_zero: (N_point1+1)*(number_steps+1)+ (N_point2+1)*i+N_point2+total_point_zero].astype(float) )
+                    DF3.append(DF_concatenated[n][(N_point1+1)*(number_steps+1)+ (N_point2+1)*(number_steps+1)+(N_point3+1)*i  +total_point_zero:(N_point1+1)*(number_steps+1)+ (N_point2+1)*(number_steps+1)+(N_point3+1)*i+N_point3+total_point_zero].astype(float))
+                if(n_proc!=0 and n_proc!=number_of_proc-1 and n_proc !=1):
+                    DF1.append(DF_concatenated[n][(N_point1+1)*i+total_point_others*(n_proc-1)+total_point_zero:(N_point1+1)*i+N_point1+total_point_others*(n_proc-1)+total_point_zero].astype(float))
+                    DF2.append(DF_concatenated[n][(N_point1+1)*(number_steps+1)+ (N_point2+1)*i+total_point_others*(n_proc-1)+total_point_zero : (N_point1+1)*(number_steps+1)+ (N_point2+1)*i+N_point2+total_point_others*(n_proc-1)+total_point_zero].astype(float).astype(float) )
+                    DF3.append(DF_concatenated[n][(N_point1+1)*(number_steps+1)+ (N_point2+1)*(number_steps+1)+(N_point3+1)*i +total_point_others*(n_proc-1)+total_point_zero :  (N_point1+1)*(number_steps+1)+ (N_point2+1)*(number_steps+1)+(N_point3+1)*i+N_point3+total_point_others*(n_proc-1)+total_point_zero].astype(float))
+            big_DF_sup.append([DF1,DF2,DF3])
+        print("run:"+str(n)+" ->"+names[n*number_of_proc]+ " added")
+    print("number of runs:",len(big_DF_sup))
+    new_big_DF = []
+    for n in range (0, len(names[:]),number_of_proc):
+        resolution_vector = []
+        for i in range(0,3):
+            time_steps_vector=[]
+            for t in range(0,number_steps):
+                time_steps_vector.append(pd.concat([big_DF_sup[n][i][t],big_DF_sup[n+1][i][t],big_DF_sup[n+2][i][t],big_DF_sup[n+3][i][t]]).reset_index())
+            resolution_vector.append(time_steps_vector)
+        new_big_DF.append(resolution_vector)
+    return(new_big_DF)
+
+
+
 ### script to call in the main ###
 """
 

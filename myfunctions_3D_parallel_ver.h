@@ -5,30 +5,38 @@
 #include "spline.h"
 using namespace std;
 
-typedef void (*print_function)(std::vector< std::vector<double> > fields_vect, double dmin,double dmax, double dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request);
+typedef vector<vector<vector< vector<double> >>> grid;
+typedef vector<vector<vector< vector<double> >>> fields_vector;
 
 
-typedef double (*artificial_dissipation_function)(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt) ;
+typedef void (*print_function)(fields_vector fields_vect, vector<double> &dmin,vector<double> &dmax, vector<double> dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request);
+
+
+typedef double (*artificial_dissipation_function)(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt);
 
 typedef std::vector<double (*)(std::vector<double>,int,double)>  derivative_vector;
 
-typedef void(*ghost_point_extrapolation_function)(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax);
+typedef void(*ghost_point_extrapolation_function)(fields_vector &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax);
 
-typedef double (*evolution_function)(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl);
+typedef double (*evolution_function)(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl);
 
-typedef void(*boundary_conditions_function)(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo);
+typedef void(*boundary_conditions_function)(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo);
 
 typedef void(*communication_function)(std::vector< std::vector<double> > &fields_vect,int j,int index_dmax_local,int index_dmin_local,int nitems,int mynode,int totalnodes,MPI_Status status);
 
-typedef vector<vector<double>>(*one_step_function)(std::vector< std::vector<double> > fields_vect,double dmin,double dmax,double dx,std::vector<double> param, double dt, std::vector< evolution_function > evo,std::vector< boundary_conditions_function > bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx,int ord,MPI_Status status, int totalnodes, int mynode, communication_function communication)   ;
+typedef vector<vector<double>>(*one_step_function)(vector<vector<vector<double>>> fields_vect,vector<double> &dmin,vector<double> &dmax,vector<double> dx,std::vector<double> param, double dt, std::vector< evolution_function > evo,std::vector< boundary_conditions_function > bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx,int ord,MPI_Status status, int totalnodes, int mynode, communication_function communication)   ;
 
-typedef void(*method_of_line_function)(std::vector< std::vector<double> > fields_vect,one_step_function one_step, double dx, std::vector<double> param, double dt, double interval,    double dmin,    double dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path ,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication);
+typedef void(*method_of_line_function)(vector<vector<vector<double>>> fields_vect,one_step_function one_step,int dim, vector<double> dx, std::vector<double> param, double dt, double interval,vector<double> dmin,vector<double> dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path ,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication);
 
-typedef vector<vector<double>>(*initialization_function)(double d_min,double d_max,double dx,std::vector<double(*)(double,double)> funcs,double param_ic,int gl, int gr,int ord);
+typedef fields_vector(*initialization_fields_function)(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,std::vector<double(*)(vector<double>,vector<double>)> funcs,vector<double> &param_ic,int gl, int gr,int ord,int dim, grid Grid);
+
+typedef grid(*initialization_grid_function)(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,int gl, int gr,int ord,int dim);
 
 
-void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vector<double(*)(double, double)>& initial_conditions, initialization_function initialize_fields, double dmin, double dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, derivative_vector & Dx ,std::vector< evolution_function > & R_vector, std::vector< boundary_conditions_function > & b_func,  std::vector<double> & parameters, one_step_function one_step, int gl,int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2, vector<double> epsilon1,print_function print_f, string file_path, method_of_line_function MOL_RK4,int ord,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
+
+void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vector<double(*)(double, double)>& initial_conditions, initialization_grid_function initialize_grid, initialization_fields_function initialize_fields,int dim, vector<double> &dmin, vector<double> &dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, derivative_vector & Dx ,std::vector< evolution_function > & R_vector, std::vector< boundary_conditions_function > & b_func,  std::vector<double> & parameters, one_step_function one_step, int gl,int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2, vector<double> epsilon1,print_function print_f, string file_path, method_of_line_function MOL_RK4,int ord,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
 {
+    int dim = 3;
     ofstream myfile2;
     //myfile2.open (file_path+"name_of_file");
     //myfile2<<"names\n";
@@ -38,18 +46,18 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
     {
         for (int l=0;l<parameters_ic_vector.size();l++)
         {
-            cout<<"processor :"<<mynode<<"\nepsilon = "<<epsilon1[e]<<" amplitude = "<<parameters_ic_vector[l]<<endl;
+            //cout<<"processor :"<<mynode<<"\nepsilon = "<<epsilon1[e]<<" amplitude = "<<parameters_ic_vector[l]<<endl;
             
             // initialize fields
             
             
-            
-            std::vector< std::vector<double> > fields_vect1 = initialize_fields(dmin,dmax,h1,initial_conditions,parameters_ic_vector[l],gl,gr,ord);     
-            std::vector< std::vector<double> > fields_vect2 = initialize_fields(dmin,dmax,h2,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
-            std::vector< std::vector<double> > fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
+            grid Grid = = initialize_grid(dmin,dmax,dx, gl,gr,ord,dim);
+            fields_vector fields_vect1 = initialize_fields(dmin,dmax,h1,initial_conditions,parameters_ic_vector[l],gl,gr,ord);     
+            fields_vector fields_vect2 = initialize_fields(dmin,dmax,h2,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
+            fields_vector fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
             // setting the output variables
             //cout<<"\n lun vec \n"<<endl;
-            string name_file = "processor_"+to_string(mynode)+"_ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+"steps"+to_string(step_to_save)+"last_time"+to_string(integration_interval)+".csv";
+            string name_file = "processor_"+to_string(mynode)+"_ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1[0])+"steps"+to_string(step_to_save)+"last_time"+to_string(integration_interval)+".csv";
             
             string complete_path = file_path+name_file;
             ofstream myfile;
@@ -65,9 +73,10 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
 }
     
 
-void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function one_step, double dx, std::vector<double> param, double dt, double interval,    double dmin,    double dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
+void MOL_RK4(fields_vector fields_vect,one_step_function one_step,int dim, vector<double> dx, std::vector<double> param, double dt, double interval,    vector<double> dmin,    vector<double> dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
 {   
-    cout<<"\nProcessor :"<<mynode<<endl<<"--- Method of lines called ---\ndx = "<<dx<<"\ndt = "<<dt<<"\nDomain = ["<<dmin<<","<<dmax<<"]\nlast time objective :"<<interval<<"\n";
+    
+    cout<<"\nProcessor :"<<mynode<<endl<<"--- Method of lines called ---\ndx = "<<dx[0]<<"\ndt = "<<dt<<"\nDomain = ["<<dmin[0]<<","<<dmax[0]<<"]\nlast time objective :"<<interval<<"\n";
     
     if (ord>gl)
     {
@@ -101,7 +110,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
             //myfile.open (file_path, ios::app);
             //myfile<<t<<"\n";
             //myfile.close();
-            cout<<"print the fields at time"<<t<<endl;
+            //cout<<"print the fields at time"<<t<<endl;
             print_f(fields_vect,dmin,dmax,dx,file_path,file_path,gl,gr,status,totalnodes,mynode,request); // the print_f function is called
             //cout<<t<<endl;
         }
@@ -117,7 +126,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
 }
 
 
-vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_vect,double dmin,double dmax,double dx,std::vector<double> param, double dt, std::vector< evolution_function > evo,std::vector< boundary_conditions_function > bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx,int ord,MPI_Status status, int totalnodes, int mynode, communication_function communication)  
+vector<vector<double>> onestep_RK4_1(vector<vector<vector<double>>> fields_vect,vector<double> &dmin,vector<double> &dmax,vector<double> dx,std::vector<double> param, double dt, std::vector< evolution_function > evo,std::vector< boundary_conditions_function > bc,double t, int gl, int gr, ghost_point_extrapolation_function ghost_point_extrapolation, artificial_dissipation_function artificial_diss,double epsilon,derivative_vector Dx,int ord,MPI_Status status, int totalnodes, int mynode, communication_function communication)  
 {
     //cout<<" processor: "<<mynode<<"time "<<t<<endl;
     int nitems=2;
@@ -351,7 +360,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
             for (int i=index_dmin_local;i<index_dmax_local;i++)
             {
                 new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.
-                                        +dt*artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
+                                        +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
             }
         }
         communication(new_fields_vect,j,index_dmax_local,index_dmin_local,nitems,mynode,totalnodes,status);
@@ -379,14 +388,14 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
 
 
 // advection equation, central finite difference, 2nd order method
-double advection_eq_left_going(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double advection_eq_left_going(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     {
         return (param[0]*Dx[0](fields_vect[0],ind_space,dx));
     }
 }
 
-double advection_eq_right_going(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double advection_eq_right_going(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     {
         return (param[0]*(-1.)*Dx[0](fields_vect[0],ind_space,dx));
@@ -397,21 +406,21 @@ double advection_eq_right_going(int ind_field,int ind_space,std::vector<std::vec
 // ----------- // WAVE EQUATION // ----------- //
 
 
-double wave_eq_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     return (Dx[0](fields_vect[1],ind_space,dx));
     //return (param.at(0)*Dx[0](fields_vect[1],ind_space,dx));
 
 }
     
-double wave_eq_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
     return (Dx[0](fields_vect[0],ind_space,dx));
     //return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx));
 }
 
-double wave_eq_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //return(fields_vect[0][ind_space]);
     return(fields_vect[0][ind_space]);
@@ -419,7 +428,7 @@ double wave_eq_phi(int ind_field,int ind_space,std::vector<std::vector<double>> 
 
 
 //  wave equation in spherical symmetry
-double wave_eq_spherical_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt,int gl)
+double wave_eq_spherical_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt,int gl)
 {
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
@@ -430,7 +439,7 @@ double wave_eq_spherical_PI(int ind_field,int ind_space,std::vector<std::vector<
 
 // R RESCALING HYPERBOLOIDAL foliation //
 // here are reported the evolution equations for the auxiliary function of the rescaled (by R) and compactified wave equation
-double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
@@ -452,7 +461,7 @@ double wave_eq_compactified_PI(int ind_field,int ind_space,std::vector<std::vect
         
 }
 
-double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
@@ -470,7 +479,7 @@ double wave_eq_compactified_PHI(int ind_field,int ind_space,std::vector<std::vec
         
 }
 
-double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     return(-fields_vect[0][ind_space]);
@@ -484,7 +493,7 @@ double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vec
 // note: at the oriign we apply Evan's method for the terms wich present 1/r
 // note: for r=s, we use a different RHS sicne some of the terms would diverge. Computing a limit "by hand", we can put = 0 the problematic terms
 
-double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
@@ -509,7 +518,7 @@ double wave_eq_compactified_PI_Chi(int ind_field,int ind_space,std::vector<std::
             );
 }
 
-double wave_eq_compactified_PHI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_PHI_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double r = dmin+dx*(ind_space-gl);
     double s = param[0];
@@ -533,14 +542,14 @@ double wave_eq_compactified_PHI_Chi(int ind_field,int ind_space,std::vector<std:
             );
 }
 
-double wave_eq_compactified_phi_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double wave_eq_compactified_phi_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     return(fields_vect[0][ind_space]);
 }
 // ----------- // MODEL 1 // ----------- //
 
 
-double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
@@ -552,7 +561,7 @@ double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fi
 // ----------- // MODEL 3 // ----------- //
 
 
-double model3_PI1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_PI1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
@@ -563,7 +572,7 @@ double model3_PI1(int ind_field,int ind_space,std::vector<std::vector<double>> f
             );
 }
 
-double model3_PI2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_PI2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
@@ -574,27 +583,27 @@ double model3_PI2(int ind_field,int ind_space,std::vector<std::vector<double>> f
             );
 }
 
-double model3_PHI1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_PHI1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
     return (Dx[0](fields_vect[0],ind_space,dx));
     //return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx));
 }
 
-double model3_PHI2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_PHI2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
     return (Dx[0](fields_vect[3],ind_space,dx));
     //return (param.at(0)*Dx[0](fields_vect[0],ind_space,dx));
 }
 
-double model3_phi1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_phi1(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //return(fields_vect[0][ind_space]);
     return(fields_vect[0][ind_space]);
 }
 
-double model3_phi2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+double model3_phi2(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,vector<double> dx,vector<double> &dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
 {
     //return(fields_vect[0][ind_space]);
     return(fields_vect[3][ind_space]);
@@ -602,42 +611,44 @@ double model3_phi2(int ind_field,int ind_space,std::vector<std::vector<double>> 
 
 // ---------- INITIAL DATA AND INITIALIZATION OF VECTORS --------------- //
 
-double initial_line(double x,double init_param) 
+double initial_line(vector<double> x,vector<double> init_param) 
 {
     return(x);
 }
 
-double initial_unity(double x,double init_param) 
+double initial_unity(vector<double> x,vector<double> init_param) 
 {
     return(1.);
 }
 
-double initial_null(double x,double init_param) 
+double initial_null(vector<double> x,vector<double> init_param) 
 {
     double a = 0.;
     return(a);
 }
 
 
-double initial_gauss(double x,double init_param)
+
+double initial_gauss(vector<double> x,vector<double> init_param)
 {
     double dev_std = 1.;
     return( init_param*exp(-pow((x*dev_std),2)) );
 }
 
-double initial_gauss_m3(double x, double init_param)
+double initial_gauss_2D(vector<double> x,vector<double> init_param)
 {
-    double dev_std = 1.;
-    return( init_param*exp(-pow((x*dev_std),2)) );
+    double amplitude = init_param[0];
+    double dev_std = 1;//init_param[1];
+    return( amplitude*exp(-pow((x[0]*dev_std),2)) * -pow((x[1]*dev_std),2)) );
 }
 
-double initial_gauss_PHI(double x,double init_param)
+double initial_gauss_PHI(vector<double> x,vector<double> init_param)
 {
     double dev_std = 1.;
     return( -2.*x*dev_std*dev_std*init_param*exp(-pow((x*dev_std),2)) );
 }
 
-double initial_gauss_PHI_compactified(double x,double init_param)
+double initial_gauss_PHI_compactified(vector<double> x,vector<double> init_param)
 {
     double s = 1;
     double rate_of_square = pow(x,2)/pow(s,2);
@@ -652,7 +663,7 @@ double initial_gauss_PHI_compactified(double x,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified(double x,double init_param)
+double initial_gauss_phi_compactified(vector<double> x,vector<double> init_param)
 {
     double s = 1;
     double dev_std = 4;
@@ -671,7 +682,7 @@ double initial_gauss_phi_compactified(double x,double init_param)
 
 // ------ hyperboloidal compactification and Chi function rescaling  ------ //
 
-double initial_gauss_PI_compactified_Chi1(double r,double init_param)
+double initial_gauss_PI_compactified_Chi1(double r,vector<double> init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -697,7 +708,7 @@ double initial_gauss_PI_compactified_Chi1(double r,double init_param)
         return(1./2.*(-A*exp(-C)+2*A*C*exp(-C)));
     }
 }
-double initial_gauss_PHI_compactified_Chi(double x,double init_param)
+double initial_gauss_PHI_compactified_Chi(vector<double> x,vector<double> init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -716,7 +727,7 @@ double initial_gauss_PHI_compactified_Chi(double x,double init_param)
     }
 }
 
-double initial_gauss_PHI_compactified_Chi1(double r,double init_param)
+double initial_gauss_PHI_compactified_Chi1(double r,vector<double> init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -743,7 +754,7 @@ double initial_gauss_PHI_compactified_Chi1(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi(double r,double init_param)
+double initial_gauss_phi_compactified_Chi(double r,vector<double> init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -761,7 +772,7 @@ double initial_gauss_phi_compactified_Chi(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi1(double r,double init_param)
+double initial_gauss_phi_compactified_Chi1(double r,vector<double> init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -788,20 +799,115 @@ double initial_gauss_phi_compactified_Chi1(double r,double init_param)
 // ------  ------  ------  ------  ------  ------  ------  ------  ------  ------
 
 
-double initial_parab_function(double x,double init_param)
+double initial_parab_function(vector<double> x,vector<double> init_param)
 {
     double a = -2*pow(x,2);
     return(a);
 }
 
-double line(double x,double t)
+double line(vector<double> x,double t)
 {
     return(4*t);
 }
 
 
+
+// initialize the grid function
+grid initialize_grid(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,int gl, int gr,int ord,int dim)
+{
+    
+    // setting the ghost point equal to the order of the artificial dissipator
+    if (ord>gl)
+    {
+        gl = ord;
+    }
+    if(ord>gr)
+    {
+        gr = ord;
+    }
+    
+    // initializing the size of all the uni-dimensional grid
+    
+    vector<int> i_v(dim);
+    for(int d=0;d<dim;d++)
+    {
+        if(dmax[d]!=dmin[d])
+        {
+            i_v[d] =  int( ((dmax[d]+dx[d]*double(gr))-(dmin[d]-dx[d]*double(gl)) +dx[d]/2 ) / dx[d]) + 1;
+        }
+        else
+        {
+            i_v[d] = 1;
+        }
+            cout<<i_v[d]<<endl;
+    }
+
+    grid Grid;
+
+    double val1;
+    double val2;
+    double val3;
+    for(int i=0;i<i_v[0];i++)
+    {
+        vector<vector<vector<double>>> support1 ;
+        Grid.push_back(support1);
+        for(int j=0;j<i_v[1];j++)
+        {
+            vector<vector<double>> support2 ;
+            Grid[i].push_back(support2);
+            for(int k=0;k<i_v[2];k++)
+            {
+                val1 = dmin[0]+dx[0]*(i-gl);
+                val2 = dmin[1]+dx[1]*(j-gl);
+                val3 = dmin[2]+dx[2]*(k-gl);
+                Grid[i][j].push_back({val1, val2, val3});
+            }
+        }
+    }
+    return(Grid);
+} 
+
+
+// initialize the scalar fields
+fields_vector initialize_fields(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,int gl, int gr,int ord,int dim,grid Grid,std::vector<double(*)(vector<double>,vector<double>)> funcs,vector<double> &param_ic)
+{
+    int N = funcs.size();
+    fields_vector new_fields;
+    // setting the ghost point equal to the order of the artificial dissipator
+    if (ord>gl)
+    {
+        gl = ord;
+    }
+    if(ord>gr)
+    {
+        gr = ord;
+    }
+    
+    for(int n=0;n<N;n++)
+    {
+        vector<vector<vector<double>>> support1 ;
+        new_fields.push_back(support1);
+        for(int i=0;i<Grid.size();i++)
+        {
+            vector<vector<double>> support2 ;
+            new_fields[n].push_back(support2);
+            for(int j=0;j<Grid[i].size();j++)
+            {
+                vector<double> support3;
+                new_fields[n][i].push_back(support3);
+                for(int k=0;k<Grid[i][j].size();k++)
+                {
+                    cout<<"flag";
+                    new_fields[n][i][j].push_back(funcs[n](Grid[i][j][k],param_ic));
+                }
+            }
+        }
+    }
+    return(new_fields);
+} 
+/*
 // initialize the fields at time zero
-vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std::vector<double(*)(double,double)> funcs,double param_ic,int gl, int gr,int ord)
+vector<vector<double>> initialize_fields(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,std::vector<double(*)(vector<double>,vector<double>)> funcs,vector<double> &param_ic,int gl, int gr,int ord,int dim)
 {
     
      if (ord>gl)
@@ -813,36 +919,65 @@ vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std
         gr = ord;
     }
     int N = funcs.size();
-    int S =  int( ((d_max+dx*double(gr))-(d_min-dx*double(gl)) +dx/2 ) / dx) + 1;
+    vector<int> S(dim);
+    for(int d=0;d<dim;d++)
+    {
+        S[d]=  int( ((dmax[d]+dx[d]*double(gr))-(dmin[d]-dx*double(gl)) +dx[d]/2 ) / dx[d]) + 1;
+    }
     //cout<<S<<endl;
-    std::vector<std::vector<double>> new_vect(N, vector<double>(S));
-    
-    
+    std::vector<std::vector<double>> new_vect(N,dim, vector<double>(S));
     for(int n=0;n<N;n++)
+    {
+        for(int d=0;d<dim;d++)
+        {
+            new_vect[n][d].push_back(vector<double>(S[d]));
+        }
+    }
+    
+    
+    double val;
+    
+    for(int d=0;d<dim;d++)
     {
         for(double j=gl;j < S-gr ;j=j+1)
         {
-            double val = d_min+dx*(j-gl);
+            val = d_min[d]+dx[d]*(j-gl);
             //cout<< j <<"\n";
-            new_vect[n][j] = funcs[n](val,param_ic);
+            new_vect[0][d][j] = val
+        }
+    }
+    
+    for(int d=0;d<dim;d++)
+    {
+        for(int n=0;n<N;n++)
+        {
+            for(double j=gl;j < S-gr ;j=j+1)
+            {
+                val = d_min[d]+dx[d]*(j-gl);
+                //cout<< j <<"\n";
+                new_vect[n][d][j] = funcs[n](val,param_ic);
+            }
         }
     }
     return(new_vect);
 }
-
-
-void init_func(std::vector<double> &func_vect,double d_min,double d_max,double dx,double(*func)(double,double),double t)
+*/
+/*
+void init_func(std::vector<double> &func_vect,vector<double> &dmin,vector<double> &dmax,vector<double> &dx,double(*func)(vector<double>,vector<double>),double t)
 {
-    for(double j=d_min;j<d_max+dx/2.;j+=dx)
+    for(int d=0;d<dim;d++)
     {
-        func_vect.push_back(func(j,t));
+        for(double j=dmin[d];j<dmax[d]+dx/2.;j+=dx[d])
+        {
+            func_vect.push_back(func(j,t));
+        }
     }
 }
-
+*/
 // --------- BOUNDARY CONDITIONS --------- //
 
 // adv eq 
-void adv_boundaries_TEM(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void adv_boundaries_TEM(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     //same of the bulk
@@ -852,7 +987,7 @@ void adv_boundaries_TEM(std::vector<std::vector<double>> &fields_vect_new,std::v
     //fields_vect_new[j].push_back(((5.*fields_vect_old[j][last_ind]-11.*fields_vect_old[j][last_ind-1]+10.*fields_vect_old[j][last_ind-2]-5*    fields_vect_old[j][last_ind-3]+fields_vect_old[j][last_ind-4])/2/dx ));
 }
 
-void adv_boundaries_right(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void adv_boundaries_right(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     //same of the bulk
@@ -861,7 +996,7 @@ void adv_boundaries_right(std::vector<std::vector<double>> &fields_vect_new,std:
     fields_vect_new[j][last_ind] = (-param[0]*Dx[0](fields_vect_old[0],last_ind,dx));
 }
 
-void adv_boundaries_left(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void adv_boundaries_left(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     // boundary conditions
@@ -877,7 +1012,7 @@ void adv_boundaries_left(std::vector<std::vector<double>> &fields_vect_new,std::
 
 
 
-void adv_boundaries_periodic(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void adv_boundaries_periodic(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     //left boundary
@@ -888,7 +1023,7 @@ void adv_boundaries_periodic(std::vector<std::vector<double>> &fields_vect_new,s
     
 }
 
-void adv_boundaries_periodic_backward_der(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void adv_boundaries_periodic_backward_der(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[0].size()-1-gl;
     //left boundary
@@ -903,7 +1038,7 @@ void adv_boundaries_periodic_backward_der(std::vector<std::vector<double>> &fiel
 
 // wave equation
 
-void refl_abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void refl_abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     fields_vect_new[j].insert(fields_vect_new[j].begin(),( (Dx[0](fields_vect_old[0],gl,dx)-Dx[0](fields_vect_old[1],gl,dx))/2 ));
@@ -912,7 +1047,7 @@ void refl_abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,st
 
 
 
-void radiative_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void radiative_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[0].size()-1-gl;
     int ind_space = gl;
@@ -929,7 +1064,7 @@ void radiative_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,s
     //fields_vect_new[j].push_back(- ((3/2*fields_vect_old[0][last_ind]-2*fields_vect_old[0][last_ind-1]+1/2*fields_vect_old[0][last_ind-2])/dx +artificial_diss(epsilon,ord,fields_vect_old,0,last_ind,dx,dt)));
 }
 
-void radiative_outer_boundaries_PI_we(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void radiative_outer_boundaries_PI_we(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[0].size()-1-gl;
     // at the left boundary, the origin, we don't put any conditions
@@ -946,14 +1081,14 @@ void radiative_outer_boundaries_PI_we(std::vector<std::vector<double>> &fields_v
 }
 
 
-void abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void abs_boundaries_PI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     fields_vect_new[j].insert(fields_vect_new[j].begin(),( Dx[0](fields_vect_old[0],gl,dx)));
     fields_vect_new[j].push_back((-Dx[0](fields_vect_old[0],last_ind,dx)));
 }
 
-void abs_boundaries_PHI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void abs_boundaries_PHI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;  
     // left boundary conditions
@@ -963,7 +1098,7 @@ void abs_boundaries_PHI(std::vector<std::vector<double>> &fields_vect_new,std::v
 }
 
    
-void no_boundary_conditions_PHI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_PHI(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;  
     // left boundary conditions
@@ -973,7 +1108,7 @@ void no_boundary_conditions_PHI(std::vector<std::vector<double>> &fields_vect_ne
     fields_vect_new[j][last_ind] = ( Dx[0](fields_vect_old[0],last_ind,dx));
 }
 
-void no_boundary_conditions_phi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_phi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     // left boundary conditions
@@ -985,7 +1120,7 @@ void no_boundary_conditions_phi(std::vector<std::vector<double>> &fields_vect_ne
 // compactified and rescaled wave equation//
 
 // R rescaling
-void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1028,7 +1163,7 @@ void no_boundary_conditions_PI_hyp(std::vector<std::vector<double>> &fields_vect
 }
 
 // R rescaling
-void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1069,7 +1204,7 @@ void no_boundary_conditions_PHI_hyp(std::vector<std::vector<double>> &fields_vec
 }
 
 // R rescaling
-void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
+void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1086,7 +1221,7 @@ void no_boundary_conditions_phi_hyp(std::vector<std::vector<double>> &fields_vec
 // CHI RESCALING //
 
 
-void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1140,7 +1275,7 @@ void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_
     fields_vect_new[j][last_ind] = (right_value);   
 }
 
-void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1194,7 +1329,7 @@ void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields
     fields_vect_new[j][last_ind] = (right_value);   
 }
 
-void no_boundary_conditions_phi_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_phi_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
@@ -1217,7 +1352,7 @@ void no_boundary_conditions_phi_hyp_Chi(std::vector<std::vector<double>> &fields
 // ------------- // MODEL 1 // ------------- //
 
 
-void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     
     
@@ -1242,14 +1377,16 @@ void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_v
 // ------------- // MODEL 3 // ------------- //
 
 
-void radiative_outer_boundaries_PI1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void radiative_outer_boundaries_PI1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     // at the left boundary, the origin, we don't put any conditions
     int ind_space = gl;
     double x = dmin;
-    //double derivative = 3* ( pow((x+dx),2)*fields_vect_old[1][ind_space+1] - pow((x-dx),2)*fields_vect_old[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + (fields_vect_old[2][ind_space] + param[0] * fields_vect_old[5][ind_space])/pow(param[0],2) * (pow(fields_vect_old[1][ind_space],2)+pow(fields_vect_old[4][ind_space],2)-pow(fields_vect_old[0][ind_space],2)-pow(fields_vect_old[3][ind_space],2));
-    double derivative = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
-    fields_vect_new[j][ind_space] = derivative;
+    double derivative = 3* ( pow((x+dx),2)*fields_vect_old[1][ind_space+1] - pow((x-dx),2)*fields_vect_old[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3))      
+                        + (fields_vect_old[2][ind_space] + param[0] * fields_vect_old[5][ind_space])/pow(param[0],2)*
+                        (pow(fields_vect_old[1][ind_space],2)+pow(fields_vect_old[4][ind_space],2)-pow(fields_vect_old[0][ind_space],2)-pow(fields_vect_old[3][ind_space],2));
+    
+    fields_vect_new[j][ind_space] = ( derivative);
 
     
     // right boundary conditions
@@ -1258,16 +1395,19 @@ void radiative_outer_boundaries_PI1_m3(std::vector<std::vector<double>> &fields_
     fields_vect_new[j][last_ind] = (-Dx[0](fields_vect_old[0],last_ind,dx)-fields_vect_old[0][last_ind]/x );
 }
 
-void radiative_outer_boundaries_PI2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void radiative_outer_boundaries_PI2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     // at the left boundary, the origin, we don't put any conditions
     int ind_space = gl;
     double x = dmin;
-    //double derivative = 3* ( pow((x+dx),2)*fields_vect_old[4][ind_space+1] - pow((x-dx),2)*fields_vect_old[4][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + (fields_vect_old[5][ind_space] - param[0] * fields_vect_old[2][ind_space])/pow(param[0],2)*(pow(fields_vect_old[1][ind_space],2)+pow(fields_vect_old[4][ind_space],2)-pow(fields_vect_old[0][ind_space],2) - pow(fields_vect_old[3][ind_space],2));
-    double derivative = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double derivative = 3* ( pow((x+dx),2)*fields_vect_old[4][ind_space+1] - pow((x-dx),2)*fields_vect_old[4][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) 
+                        + (fields_vect_old[5][ind_space] - param[0] * fields_vect_old[2][ind_space])/pow(param[0],2)*
+                        (pow(fields_vect_old[1][ind_space],2)+pow(fields_vect_old[4][ind_space],2)-pow(fields_vect_old[0][ind_space],2)- 
+                        pow(fields_vect_old[3][ind_space],2));
+    
                         
                         
-    fields_vect_new[j][ind_space] = derivative;
+    fields_vect_new[j][ind_space] = ( derivative);
 
     
     // right boundary conditions
@@ -1277,43 +1417,43 @@ void radiative_outer_boundaries_PI2_m3(std::vector<std::vector<double>> &fields_
 }
 
 
-void no_boundary_conditions_PHI1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_PHI1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;  
     // left boundary conditions
-    fields_vect_new[1][gl] = Dx[0](fields_vect_old[0],gl,dx);
+    fields_vect_new[j][gl] = (Dx[0](fields_vect_old[0],gl,dx));
     
     // right boundary conditions
-    fields_vect_new[1][last_ind] = Dx[0](fields_vect_old[0],last_ind,dx);
+    fields_vect_new[j][last_ind] = ( Dx[0](fields_vect_old[0],last_ind,dx));
 }
 
-void no_boundary_conditions_PHI2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_PHI2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;  
     // left boundary conditions
-    fields_vect_new[4][gl] = Dx[0](fields_vect_old[3],gl,dx);
+    fields_vect_new[j][gl] = (Dx[0](fields_vect_old[3],gl,dx));
     
     // right boundary conditions
-    fields_vect_new[4][last_ind] = Dx[0](fields_vect_old[3],last_ind,dx);
+    fields_vect_new[j][last_ind] = ( Dx[0](fields_vect_old[3],last_ind,dx));
 }
 
 
-void no_boundary_conditions_phi1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_phi1_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     // left boundary conditions
-    fields_vect_new[2][gl] = (fields_vect_old[0][gl]);
+    fields_vect_new[j][gl] = (fields_vect_old[0][gl]);
     // right boundary conditions
-    fields_vect_new[2][last_ind] = (fields_vect_old[0][last_ind]);
+    fields_vect_new[j][last_ind] = (fields_vect_old[0][last_ind]);
 }
 
-void no_boundary_conditions_phi2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+void no_boundary_conditions_phi2_m3(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     // left boundary conditions
-    fields_vect_new[5][gl] = (fields_vect_old[3][gl]);
+    fields_vect_new[j][gl] = (fields_vect_old[3][gl]);
     // right boundary conditions
-    fields_vect_new[5][last_ind] = (fields_vect_old[3][last_ind]);
+    fields_vect_new[j][last_ind] = (fields_vect_old[3][last_ind]);
 }
 
 //-------------- DIFFERENTIAL OPERATORS -------------//
@@ -1325,35 +1465,35 @@ void no_boundary_conditions_phi2_m3(std::vector<std::vector<double>> &fields_vec
 
     
 // fourth order central finite difference expression for a first spatial derivative
-double first_der_fourth_order_centered(std::vector<double> vector,int i,double dx)
+double first_der_fourth_order_centered(std::vector<double> vector,int i,vector<double> dx)
 {
     return((vector[i-2]/12.-2./3.*vector[i-1]+2./3.*vector[i+1]-vector[i+2]/12.)/dx);
 }
     
 // fourth order central finite difference expression for a first spatial derivative
-double first_der_second_order_centered(std::vector<double> vector,int i,double dx)
+double first_der_second_order_centered(std::vector<double> vector,int i,vector<double> dx)
 {
     return((-vector[i-1]+vector[i+1])/2./dx);
 }
 
-double first_der_first_order_backward(std::vector<double> vector,int i,double dx)
+double first_der_first_order_backward(std::vector<double> vector,int i,vector<double> dx)
 {
     return((-vector[i-1]+vector[i])/dx);
 }
 
-double first_der_second_order_backward(std::vector<double> vector,int i,double dx)
+double first_der_second_order_backward(std::vector<double> vector,int i,vector<double> dx)
 {
     return((1/2.*vector[i-2]-2.*vector[i-1]+3./2.*vector[i])/dx);
 }
 
-double first_der_second_order_forward(std::vector<double> vector,int i,double dx)
+double first_der_second_order_forward(std::vector<double> vector,int i,vector<double> dx)
 {
     return((1/2.*vector[i-2]+2.*vector[i-1]-3./2.*vector[i])/dx);
 }
     
 //-------------- GHOST POINTS --------------//
 
-void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     
     // attachment of the ghost points to the boundary of the function
@@ -1368,7 +1508,7 @@ void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     // computation of the ghost points via interpolation
     // we find the x vector and the relative y vector values of the subsections starting from the boundaries
@@ -1413,7 +1553,7 @@ void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,dou
 }
 
 
-void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int last_ind = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1429,7 +1569,7 @@ void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect
     }
 }
 
-void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int last_ind = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1445,23 +1585,26 @@ void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation_4_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord(fields_vector &field_vect,grid Grid,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
-    ;
+    int dim = 3
     // attachment of the ghost points to the boundary of the function
-    for (int i=gl-1; i>=0;i--)
+    for(int d;d<dim;d++)
     {
+        for (int i=gl-1; i>=0;i--)
+        {
+            
+            field_vect[j][i][j][k] = field_vect[j][d][i+1]-(-25./12.*field_vect[j][d][i+1]+4.*field_vect[j][d][i+2]-3.*field_vect[j][d][i+3]+4./3.*field_vect[j][d][i+4]-1./4.*field_vect[j][d][i+5])+1./2.*(2.*field_vect[j][d][i+1]-5.*field_vect[j][d][i+2]+4.*field_vect[j][d][i+3]-field_vect[j][d][i+4]);
+        }
         
-        field_vect[j][i] = field_vect[j][i+1]-(-25./12.*field_vect[j][i+1]+4.*field_vect[j][i+2]-3.*field_vect[j][i+3]+4./3.*field_vect[j][i+4]-1./4.*field_vect[j][i+5])+1./2.*(2.*field_vect[j][i+1]-5.*field_vect[j][i+2]+4.*field_vect[j][i+3]-field_vect[j][i+4]);
-    }
-    
-    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
-    {
-        field_vect[j][i] = field_vect[j][i-1]+(+25./12.*field_vect[j][i-1]-4.*field_vect[j][i-2]+3.*field_vect[j][i-3]-4./3.*field_vect[j][i-4]+1./4.*field_vect[j][i-5]+1./2.*(2.*field_vect[j][i-1]-5.*field_vect[j][i-2]+4.*field_vect[j][i-3]-field_vect[j][i-4]));
+        for (int i=field_vect[j][d].size()-gr; i<field_vect[j][d].size();i++)
+        {
+            field_vect[j][d][i] = field_vect[j][d][i-1]+(+25./12.*field_vect[j][d][i-1]-4.*field_vect[j][d][i-2]+3.*field_vect[j][d][i-3]-4./3.*field_vect[j][d][i-4]+1./4.*field_vect[j][d][i-5]+1./2.*(2.*field_vect[j][d][i-1]-5.*field_vect[j][d][i-2]+4.*field_vect[j][d][i-3]-field_vect[j][d][i-4]));
+        }
     }
 }
 
-void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     ;
     // attachment of the ghost points to the boundary of the function
@@ -1477,7 +1620,7 @@ void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
         
     // attachment of the ghost points to the boundary of the function
@@ -1493,7 +1636,7 @@ void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,dou
     }
 }
 
-void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1522,7 +1665,7 @@ void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<
     
 }
 
-void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1550,7 +1693,7 @@ void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<
     }
 }
 
-void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1579,12 +1722,12 @@ void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vec
     
 }
 
-void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
     // PI is even
-    if (j==0 || j==2 || j==3 || j==5)
+    if (j==0 || j==2)
     {
         for (int i=0; i<gl;i++)
         {
@@ -1593,7 +1736,7 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vec
     }
     
     // PHI is odd
-    if (j==1 || j==4)
+    if (j==1)
     {
         for (int i=0; i<gl;i++)
         {
@@ -1608,7 +1751,7 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vec
     
 }
 
-void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // computation of the ghost points via interpolation
@@ -1644,7 +1787,7 @@ void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::
     
     // attachment of the ghost points to the boundary of the function
     // PI is even
-    if (j==0 || j==2 || j==3 || j==5)
+    if (j==0 || j==2)
     {
         for (int i=0; i<gl;i++)
         {
@@ -1653,7 +1796,7 @@ void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::
     }
     
     // PHI is odd
-    if (j==1 || j==4)
+    if (j==1)
     {
         for (int i=0; i<gl;i++)
         {
@@ -1677,7 +1820,7 @@ void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::
     
 }
 
-void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1705,7 +1848,7 @@ void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std
     }
 }
 
-void ghost_point_extrapolation_6_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_6_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,vector<double> dx, double dt, int j,int gl, int gr,vector<double> &dmin,vector<double> &dmax)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1735,23 +1878,23 @@ void ghost_point_extrapolation_6_ord_spherical_symmetry(std::vector<std::vector<
 
 
 // ------------- ARTIFICIAL DISSIPATION -------------- //
-double artificial_dissipation_2(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
+double artificial_dissipation_2(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt)      
 {
     return(-epsilon*(dt/dx)*pow(-1,ord)*(copy_fields_vect[j][i+2]-4.*copy_fields_vect[j][i+1]+6.*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4.*copy_fields_vect[j][i-1]) );
 }
 
-double artificial_dissipation_2_Husa(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
+double artificial_dissipation_2_Husa(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt)      
 {
     return(-epsilon/pow(dx,1)*pow(-1,ord)/16*(copy_fields_vect[j][i+2]-4.*copy_fields_vect[j][i+1]+6.*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4.*copy_fields_vect[j][i-1]) );
 }
 
 // to control!
-double artificial_dissipation_4(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
+double artificial_dissipation_4(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt)      
 {
     return(-epsilon*pow(dx,3)*pow(-1,ord)/4*(copy_fields_vect[j][i+2]-4*copy_fields_vect[j][i+1]+6*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4*copy_fields_vect[j][i-1]) );
 }
 
-double artificial_dissipation_2_ani(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
+double artificial_dissipation_2_ani(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt)      
 {
     return(-epsilon*pow(dx,2*ord-1)*pow(-1,ord)/4.*(copy_fields_vect[j][i+2]-4*copy_fields_vect[j][i+1]+6*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4*copy_fields_vect[j][i-1]) );
 }
@@ -1780,7 +1923,7 @@ double norm_of_diff(std::vector<double> &num1, std::vector<double> &num2,double 
     return( norm(diff,h) );
 }
 
-double conv_test(std::vector<double> &num1,std::vector<double> &num2,double(*theo_sol)(double,double),void(*init_func)(std::vector<double> &,double ,double ,double ,double(*)(double,double),double),double h1,double h2, double(*norm) (std::vector<double> & , double ),double (*norm_of_diff)(std::vector<double> &, std::vector<double> &,double , double(*) (std::vector<double> & , double )),double dmin, double dmax,double dx,double t)
+double conv_test(std::vector<double> &num1,std::vector<double> &num2,double(*theo_sol)(double,double),void(*init_func)(std::vector<double> &,double ,double ,double ,double(*)(double,double),double),double h1,double h2, double(*norm) (std::vector<double> & , double ),double (*norm_of_diff)(std::vector<double> &, std::vector<double> &,double , double(*) (std::vector<double> & , double )),vector<double> &dmin, vector<double> &dmax,vector<double> dx,double t)
 {
     cout<<"--- Perfoming convergence test ---\nrate of the deltas="<<h1/h2<<endl;
     std::vector<double> theo1;
@@ -1841,46 +1984,62 @@ void diff_vector(std::vector<double> &diff,std::vector<double> &vec1, std::vecto
 
 
 
-void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double dmax, double dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request)
+void print_f(fields_vector fields_vect, vector<double> &dmin, vector<double> &dmax, vector<double> dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request)
 {
-    int S =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
-    double index_dmin_local,index_dmax_local;
-        
-    // defining the first and last spatial index of the domain, the actual process will work inside this range
-        
-    index_dmin_local = (gl+1) + mynode * int((S-2-gl-gr)/totalnodes);
-    if (mynode==totalnodes-1)
+    int dim = 3;
+    vector<int> S(dim);
+    vector<double> index_dmin_local(dim),index_dmax_local(dim);
+    for(int d=0;d<dim;d++)
     {
-        index_dmax_local =  S-1-gr;
+        S[d] =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
+        // defining the first and last spatial index of the domain, the actual process will work inside this range
+            
+        index_dmin_local[d] = (gl+1) + mynode * int((S[d]-2-gl-gr)/totalnodes);
+        if (mynode==totalnodes-1)
+        {
+            index_dmax_local[d] =  S[d]-1-gr;
+        }
+        else
+        {
+            index_dmax_local[d] = (gl+1) + (mynode+1) * int((S[d]-2-gl-gr)/totalnodes);
+        }
     }
-    else
-    {
-        index_dmax_local = (gl+1) + (mynode+1) * int((S-2-gl-gr)/totalnodes);
-    }
+    
+    
     ofstream myfile_print_f;
     myfile_print_f.open (name_file,ios::app);
     
     // headers of the columns
-    myfile_print_f<<"x,";
+    for(int d=0;d<dim;d++)
+    {
+        myfile_print_f<<"x_"<<to_string(d)<<",";
+    }
     for (int i=0; i<fields_vect.size()-1; i++)
     {
         myfile_print_f << "field"<<to_string(i)<<",";
     }    
     myfile_print_f << "field"<<to_string(fields_vect.size()-1)<<"\n";
     
-    // for every spatial point
+    
+    // Each processor print only the spatial points that it is evolving
+    
+    // the processor zero print also the left ghost points
     if(mynode==0)
     {
         for(int j=0;j<gl+1;j++)
         {
-            myfile_print_f << dmin+dx*double(j-gl)<<",";
+            for(int d=0;d<dim;d++)
+            {
+                myfile_print_f << dmin[d]+dx[d]*double(j-gl)<<",";
             // for every fields add the relative value
             for (int i=0; i<fields_vect.size()-1; i++)
             {
                 myfile_print_f << fields_vect[i][j]<<",";
             }
             myfile_print_f << fields_vect[fields_vect.size()-1][j];
-            myfile_print_f<<"\n";            
+            myfile_print_f<<"\n";
+            // send a message from proc 0 to the other, saying that the header has been written
+            
         }
     }
     
@@ -1898,6 +2057,8 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
         myfile_print_f<<"\n";
     
     }
+    
+    // the last processor print also the right ghost points
     if(mynode==totalnodes-1)
     {
         for(int j=index_dmax_local;j<fields_vect[0].size();j++)
@@ -1917,20 +2078,47 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
 }
 
 
-void read_parameters(string name_parameters_file, double &dmin, double &dmax, double &h1, double &integration_interval,int &step_to_save,int &gl,int &gr,int &ord, vector<double> &epsilon,vector<double> &parameters_ic_vector, vector<double> &parameters)
+void read_parameters(string name_parameters_file, vector<double> &dmin, vector<double> &dmax, vector<double> &h1, double &integration_interval,int &step_to_save,int &gl,int &gr,int &ord, vector<double> &epsilon,vector<double> &parameters_ic_vector, vector<double> &parameters)
 {
     // we read the input parameter from an external file
     ifstream input_file;
     input_file.open(name_parameters_file);
     
+    // dmin vector
+    std::string dmin_v;
     input_file.ignore(256,' ');
-    input_file >> dmin;
+    getline (input_file,dmin_v);
     
-    input_file.ignore(256,' ');
-    input_file >> dmax;
+    std::stringstream iss3 (dmin_v);
+    double number;
+    while ( iss3 >> number )
+    {
+        dmin.push_back( number );
+    }
     
+    
+    // dmin vector
+    std::string dmax_v;
     input_file.ignore(256,' ');
-    input_file >> h1;
+    getline (input_file,dmax_v);
+    
+    std::stringstream iss4 (dmax_v);
+    while ( iss4 >> number )
+    {
+        dmax.push_back( number );
+    }
+    
+    // dmin vector
+    std::string h1_v;
+    input_file.ignore(256,' ');
+    getline (input_file,h1_v);
+    
+    std::stringstream iss5 (h1_v);
+    while ( iss5 >> number )
+    {
+        h1.push_back( number );
+    }
+    
     
     input_file.ignore(256,' ');
     input_file >> integration_interval;
@@ -1954,7 +2142,7 @@ void read_parameters(string name_parameters_file, double &dmin, double &dmax, do
     getline (input_file,e);
     
     std::stringstream iss (e);
-    double number;
+    //double number;
     while ( iss >> number )
     {
         epsilon.push_back( number );
