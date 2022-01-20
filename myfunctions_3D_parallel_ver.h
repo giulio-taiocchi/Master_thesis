@@ -5,12 +5,14 @@
 #include "spline.h"
 using namespace std;
 
+// !!!!! cambiare nella funzione multiple_parameters_run l'input name file per ogni MOL_RK4 run. ora printano tuttel sullo stesso foglio
+// ma devono printare su file diversi
+
 typedef vector<vector<vector< vector<double> >>> grid;
 typedef vector<vector<vector< vector<double> >>> fields_vector;
 
 
-typedef void (*print_function)(fields_vector fields_vect, vector<double> &dmin,vector<double> &dmax, vector<double> dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request);
-
+typedef void (*print_function)(fields_vector fields_vect, grid Grid, vector<double> &dmin, vector<double> &dmax, vector<double> dx, string name_file,string name_folder, vector<double> &gl, vector<double> &gr,int mynode, int totalnodes);
 
 typedef double (*artificial_dissipation_function)(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,vector<double> dx,double dt);
 
@@ -75,7 +77,7 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
 
 void MOL_RK4(fields_vector fields_vect,one_step_function one_step,int dim, vector<double> dx, std::vector<double> param, double dt, double interval,    vector<double> dmin,    vector<double> dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
 {   
-    
+    int N_points;
     cout<<"\nProcessor :"<<mynode<<endl<<"--- Method of lines called ---\ndx = "<<dx[0]<<"\ndt = "<<dt<<"\nDomain = ["<<dmin[0]<<","<<dmax[0]<<"]\nlast time objective :"<<interval<<"\n";
     
     if (ord>gl)
@@ -95,10 +97,16 @@ void MOL_RK4(fields_vector fields_vect,one_step_function one_step,int dim, vecto
     double last;
     //extrapolation of the ghost point for the initial data
     int N = fields_vect.size();
+    
+    
+    /*         ------------ to generalize to the 3D case ------------
     for (int j=0; j <N; j++)
     {
         ghost_point_extrapolation(fields_vect, 0,dx,dt,j,gl,gr,dmin,dmax);
     }
+    */
+    
+    
     for (double t=0;t<interval+dt/1.5;t=double(t)+double(dt)) 
     {        
         
@@ -111,7 +119,8 @@ void MOL_RK4(fields_vector fields_vect,one_step_function one_step,int dim, vecto
             //myfile<<t<<"\n";
             //myfile.close();
             //cout<<"print the fields at time"<<t<<endl;
-            print_f(fields_vect,dmin,dmax,dx,file_path,file_path,gl,gr,status,totalnodes,mynode,request); // the print_f function is called
+            //print_f(fields_vect,dmin,dmax,dx,file_path,file_path,gl,gr,status,totalnodes,mynode,request); // the print_f function is called
+            N_points = print_f(new_fields_vector, Grid, dmin, dmax, dx, file_path, file_path,  gl,  gr,mynode,totalnodes);
             //cout<<t<<endl;
         }
         fields_vect = one_step(fields_vect,dmin,dmax,dx,param,dt,R_vect,bc,t,gl,gr,ghost_point_extrapolation,artificial_diss_2,epsilon,Dx,ord
@@ -120,7 +129,10 @@ void MOL_RK4(fields_vector fields_vect,one_step_function one_step,int dim, vecto
         counter += 1;
     last = t;
     }
-    
+    ofstream myfile_print_f;
+    myfile_print_f.open (file_path,ios::app);
+    myfile_print_f<<N_points;
+    myfile_print_f.close();
     //cout<<"last time included:"<<last<<endl;
     
 }
@@ -905,75 +917,7 @@ fields_vector initialize_fields(vector<double> &dmin,vector<double> &dmax,vector
     }
     return(new_fields);
 } 
-/*
-// initialize the fields at time zero
-vector<vector<double>> initialize_fields(vector<double> &dmin,vector<double> &dmax,vector<double> &dx,std::vector<double(*)(vector<double>,vector<double>)> funcs,vector<double> &param_ic,int gl, int gr,int ord,int dim)
-{
-    
-     if (ord>gl)
-    {
-        gl = ord;
-    }
-    if(ord>gr)
-    {
-        gr = ord;
-    }
-    int N = funcs.size();
-    vector<int> S(dim);
-    for(int d=0;d<dim;d++)
-    {
-        S[d]=  int( ((dmax[d]+dx[d]*double(gr))-(dmin[d]-dx*double(gl)) +dx[d]/2 ) / dx[d]) + 1;
-    }
-    //cout<<S<<endl;
-    std::vector<std::vector<double>> new_vect(N,dim, vector<double>(S));
-    for(int n=0;n<N;n++)
-    {
-        for(int d=0;d<dim;d++)
-        {
-            new_vect[n][d].push_back(vector<double>(S[d]));
-        }
-    }
-    
-    
-    double val;
-    
-    for(int d=0;d<dim;d++)
-    {
-        for(double j=gl;j < S-gr ;j=j+1)
-        {
-            val = d_min[d]+dx[d]*(j-gl);
-            //cout<< j <<"\n";
-            new_vect[0][d][j] = val
-        }
-    }
-    
-    for(int d=0;d<dim;d++)
-    {
-        for(int n=0;n<N;n++)
-        {
-            for(double j=gl;j < S-gr ;j=j+1)
-            {
-                val = d_min[d]+dx[d]*(j-gl);
-                //cout<< j <<"\n";
-                new_vect[n][d][j] = funcs[n](val,param_ic);
-            }
-        }
-    }
-    return(new_vect);
-}
-*/
-/*
-void init_func(std::vector<double> &func_vect,vector<double> &dmin,vector<double> &dmax,vector<double> &dx,double(*func)(vector<double>,vector<double>),double t)
-{
-    for(int d=0;d<dim;d++)
-    {
-        for(double j=dmin[d];j<dmax[d]+dx/2.;j+=dx[d])
-        {
-            func_vect.push_back(func(j,t));
-        }
-    }
-}
-*/
+
 // --------- BOUNDARY CONDITIONS --------- //
 
 // adv eq 
@@ -1982,39 +1926,79 @@ void diff_vector(std::vector<double> &diff,std::vector<double> &vec1, std::vecto
     
 // Function to print on a file the data
 
-
-
-void print_f(fields_vector fields_vect, vector<double> &dmin, vector<double> &dmax, vector<double> dx, string name_file,string name_folder, int gl, int gr,MPI_Status status, int totalnodes, int mynode,MPI_Request request)
+int print_f(fields_vector fields_vect, grid Grid, vector<double> &dmin, vector<double> &dmax, vector<double> dx, string name_file,string name_folder, vector<double> &gl, vector<double> &gr,int mynode, int totalnodes)
 {
+    int count_points = 0;
     int dim = 3;
+    int N = fields_vect.size();
     vector<int> S(dim);
     vector<double> index_dmin_local(dim),index_dmax_local(dim);
     for(int d=0;d<dim;d++)
     {
-        S[d] =  int( ((dmax+dx*double(gr))-(dmin-dx*double(gl)) +dx/2 ) / dx) + 1;
-        // defining the first and last spatial index of the domain, the actual process will work inside this range
-            
-        index_dmin_local[d] = (gl+1) + mynode * int((S[d]-2-gl-gr)/totalnodes);
-        if (mynode==totalnodes-1)
+        //cout<<"max: "<<dmax[d]<<"min: "<<dmin[d]<<"dx :"<<dx[d]<<endl;
+        if(dmax[d]!=dmin[d])
         {
-            index_dmax_local[d] =  S[d]-1-gr;
+            S[d] =  int( ((dmax[d]+dx[d]*double(gr[d]))-(dmin[d]-dx[d]*double(gl[d])) +dx[d]/2 ) / dx[d]) + 1;
         }
         else
         {
-            index_dmax_local[d] = (gl+1) + (mynode+1) * int((S[d]-2-gl-gr)/totalnodes);
+            S[d] = 1;
+        }
+        //cout<<"S"<<d<<": "<<S[d]<<endl;
+        // defining the first and last spatial index of the domain, the actual process will work inside this range
+        if (S[d]!=1)
+        {
+            index_dmin_local[d] = (gl[d]+1) + mynode * int((S[d]-2-gl[d]-gr[d])/totalnodes);
+            //cout<<"mx from processor: "<<mynode<<" dmin local: dim "<<d<<" index "<<index_dmin_local[d]<<endl;
+            if (mynode==totalnodes-1)
+            {
+                index_dmax_local[d] =  S[d]-1-gr[d];
+                //cout<<"mx from processor: "<<mynode<<" dmax local: dim "<<d<<" index "<<index_dmax_local[d]<<endl;
+            }
+            else
+            {
+                index_dmax_local[d] = (gl[d]+1) + (mynode+1) * int((S[d]-2-gl[d]-gr[d])/totalnodes);
+                //cout<<"mx from processor: "<<mynode<<" dmax local: dim "<<d<<" index "<<index_dmax_local[d]<<endl;
+            }
+        }
+        else
+        {
+            index_dmin_local[d] = 0;
+            index_dmax_local[d] = 1;
         }
     }
     
     
+    // ! we parallelize on the first coordinate !
+    for(int d=1;d<dim;d++)
+    {
+        if (S[d]!=1)
+        {
+            index_dmin_local[d] = (gl[d]+1) ;
+            //cout<<"mx from processor: "<<mynode<<" dmin local: dim "<<d<<" index "<<index_dmin_local[d]<<endl;
+           
+            index_dmax_local[d] =  S[d]-1-gr[d];
+                //cout<<"mx from processor: "<<mynode<<" dmax local: dim "<<d<<" index "<<index_dmax_local[d]<<endl;
+        }
+        else
+        {
+            index_dmin_local[d] = 0;
+            index_dmax_local[d] = 1;
+        }
+    }
+    
+    
+    // open the output file with name name_file without deleting its lines
     ofstream myfile_print_f;
     myfile_print_f.open (name_file,ios::app);
+   
     
     // headers of the columns
     for(int d=0;d<dim;d++)
     {
         myfile_print_f<<"x_"<<to_string(d)<<",";
     }
-    for (int i=0; i<fields_vect.size()-1; i++)
+    for (int i=0; i<fields_vect.size(); i++)
     {
         myfile_print_f << "field"<<to_string(i)<<",";
     }    
@@ -2026,56 +2010,215 @@ void print_f(fields_vector fields_vect, vector<double> &dmin, vector<double> &dm
     // the processor zero print also the left ghost points
     if(mynode==0)
     {
-        for(int j=0;j<gl+1;j++)
+        // we print the ghost point "before" the i=index_dmin_local plan[0]
+        if(S[0]!=1)
         {
-            for(int d=0;d<dim;d++)
+            //cout<<"we print the ghost point before the i=index_dmin_local plan[0]"<<endl;
+            for(int i=0;i<gl[0]+1;i++)
             {
-                myfile_print_f << dmin[d]+dx[d]*double(j-gl)<<",";
-            // for every fields add the relative value
-            for (int i=0; i<fields_vect.size()-1; i++)
-            {
-                myfile_print_f << fields_vect[i][j]<<",";
+                //cout<<"(gl)processor "<<mynode<<" index x_0: "<<i<<endl;
+                for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
+                {
+                    //cout<<"(gl)processor "<<mynode<<" index x_1: "<<j<<endl;
+                    for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
+                    {
+                        count_points += 1;
+                        //cout<<"(gl)processor "<<mynode<<" index x_2: "<<k<<endl;
+                        for(int d=0;d<dim;d++)
+                        {
+                            myfile_print_f << Grid[i][j][k][d]<<",";
+                        }
+                        for(int n=0;n<N-1;n++)
+                        {
+                            myfile_print_f<< fields_vect[n][i][j][k]<<",";
+                        }
+                        
+                        myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                        myfile_print_f<<"\n";
+                    }
+                }
             }
-            myfile_print_f << fields_vect[fields_vect.size()-1][j];
-            myfile_print_f<<"\n";
-            // send a message from proc 0 to the other, saying that the header has been written
-            
         }
     }
-    
-    
-    
-    for (int j=index_dmin_local; j<index_dmax_local; j= j+1)
+    // we print the ghost point "before" the j=index_dmin_local plan[1]
+    if(S[1]!=1)
     {
-        myfile_print_f << dmin+dx*double(j-gl)<<",";
-        // for every fields add the relative value
-        for (int i=0; i<fields_vect.size()-1; i++)
+        //cout<<"S[1] è diverso da 1"<<endl;
+        //cout<<"we print the ghost point before the j=index_dmin_local plan[1]"<<endl;
+        for(int i=index_dmin_local[0];i<index_dmax_local[0];i++)
         {
-            myfile_print_f << fields_vect[i][j]<<",";
+            //cout<<"(gl)processor "<<mynode<<" index x_0: "<<i<<endl;
+            for(int j=0;j<gl[1]+1;j++)
+            {
+                //cout<<"(gl)processor "<<mynode<<" index x_1: "<<j<<endl;
+                for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
+                {
+                    //cout<<"(gl)processor "<<mynode<<" index x_2: "<<k<<endl;
+                    count_points += 1;
+                    for(int d=0;d<dim;d++)
+                    {
+                        myfile_print_f << Grid[i][j][k][d]<<",";
+                    }
+                    for(int n=0;n<N-1;n++)
+                    {
+                        myfile_print_f << fields_vect[n][i][j][k]<<",";
+                    }
+                    myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                    myfile_print_f<<"\n";
+                        
+                }
+            }
         }
-        myfile_print_f << fields_vect[fields_vect.size()-1][j];
-        myfile_print_f<<"\n";
-    
+    }
+    // we print the ghost point "before" the k=index_dmin_local plan[2]
+    if(S[2]!=1)
+    {
+        //cout<<"we print the ghost point before the k=index_dmin_local plan[2]"<<endl;
+        for(int i=index_dmin_local[0];i<index_dmax_local[0];i++)
+        {
+            for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
+            {
+                for(int k=0;k<gl[2]+1;k++)
+                {
+                    count_points += 1;
+                    for(int d=0;d<dim;d++)
+                    {
+                        myfile_print_f << Grid[i][j][k][d]<<",";
+                    }
+                    for(int n=0;n<N-1;n++)
+                    {
+                        myfile_print_f << fields_vect[n][i][j][k]<<",";
+                    }
+                    myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                    myfile_print_f<<"\n";
+                }
+            }
+        }
     }
     
+    // Bulk processors printing routine
+    for(int i=index_dmin_local[0];i<index_dmax_local[0];i++)
+    {
+        //cout<<"processor "<<mynode<<" index x_0: "<<i<<endl;
+        for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
+        {
+            //cout<<"processor "<<mynode<<" index x_1: "<<j<<endl;
+            for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
+            {
+                count_points += 1;
+                //cout<<"processor "<<mynode<<" index x_2: "<<k<<endl;
+                for(int d=0;d<dim;d++)
+                {
+                    myfile_print_f << Grid[i][j][k][d]<<",";
+                }
+                
+                for(int n=0;n<N-1;n++)
+                {
+                    //cout<<"field index"<<n<<endl;
+                    myfile_print_f << fields_vect[n][i][j][k]<<",";
+                }
+                myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                myfile_print_f<<"\n";
+            }
+        }
+    }
+                
+                
     // the last processor print also the right ghost points
     if(mynode==totalnodes-1)
     {
-        for(int j=index_dmax_local;j<fields_vect[0].size();j++)
+        // we print the ghost point "after" the i=index_dmax_local[0] plan
+        if(S[0]!=1)
         {
-            myfile_print_f << dmin+dx*double(j-gl)<<",";
-            // for every fields add the relative value
-            for (int i=0; i<fields_vect.size()-1; i++)
+            //cout<<"we print the ghost point after the i=index_dmax_local[0] plan"<<endl;
+            for(int i=index_dmax_local[0];i<S[0];i++)
             {
-                myfile_print_f << fields_vect[i][j]<<",";
+                //cout<<"last processor x_0 index: "<<i<<endl;
+                for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
+                {
+                    //cout<<"last processor x_1 index: "<<j<<endl;
+                    for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
+                    {
+                        count_points += 1;
+                        //cout<<"last processor x_2 index: "<<k<<endl;
+                        for(int d=0;d<dim;d++)
+                        {
+                            myfile_print_f << Grid[i][j][k][d]<<",";
+                        }
+                        for(int n=0;n<N-1;n++)
+                        {
+                            myfile_print_f << fields_vect[n][i][j][k]<<",";
+                        }
+                        myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                        myfile_print_f<<"\n";
+                    }
+                }
             }
-            myfile_print_f << fields_vect[fields_vect.size()-1][j];
-            myfile_print_f<<"\n";
+        }
+    }
+    // we print the ghost point "after" the j=index_dmax_local[1] plan
+    if(S[1]!=1)
+    {
+        //cout<<"we print the ghost point after the j=index_dmax_local[1] plan"<<endl;
+        for(int i=index_dmin_local[0];i<index_dmax_local[0];i++)
+        {
+            for(int j=index_dmax_local[1];j<S[1];j++)
+            {
+                for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
+                {
+                    count_points += 1;
+                    for(int d=0;d<dim;d++)
+                    {
+                        myfile_print_f << Grid[i][j][k][d]<<",";
+                    }
+                    for(int n=0;n<N-1;n++)
+                    {
+                        myfile_print_f << fields_vect[n][i][j][k]<<",";
+                    }
+                    myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                    myfile_print_f<<"\n";
+                }
+            }
+        }
+    }
+    // we print the ghost point "after" the i=index_dmax_local plan[0]
+    if(S[2]!=2)
+    {
+        //cout<<"we print the ghost point after the k=index_dmax_local[2] plan"<<endl;
+        for(int i=index_dmin_local[0];i<index_dmax_local[0];i++)
+        {
+            //cout<<"last processor x_0 index: "<<i<<endl;
+            for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
+            {
+                //cout<<"last processor x_1 index: "<<j<<endl;
+                for(int k=index_dmax_local[2];k<S[2];k++)
+                {
+                    count_points += 1;
+                    //cout<<"last processor x_2 index: "<<k<<endl;
+                    for(int d=0;d<dim;d++)
+                    {
+                        myfile_print_f << Grid[i][j][k][d]<<",";
+                    }
+                    for(int n=0;n<N-1;n++)
+                    {
+                        myfile_print_f << fields_vect[n][i][j][k]<<",";
+                    }
+                    myfile_print_f << fields_vect[N-1][i][j][k]<<",";
+                    myfile_print_f<<"\n";
+                        
+                }
+            }
         }
     }
     
+    
     myfile_print_f.close();
+    return(count_points);
+    
+    
+
 }
+
 
 
 void read_parameters(string name_parameters_file, vector<double> &dmin, vector<double> &dmax, vector<double> &h1, double &integration_interval,int &step_to_save,int &gl,int &gr,int &ord, vector<double> &epsilon,vector<double> &parameters_ic_vector, vector<double> &parameters)

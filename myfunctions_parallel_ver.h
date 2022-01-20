@@ -92,7 +92,6 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
     }
     for (double t=0;t<interval+dt/1.5;t=double(t)+double(dt)) 
     {        
-        
         // we print to file only for some time
         if ((counter%m)==0)
         {
@@ -101,7 +100,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
             //myfile.open (file_path, ios::app);
             //myfile<<t<<"\n";
             //myfile.close();
-            cout<<"print the fields at time"<<t<<endl;
+            //cout<<"print the fields at time"<<t<<endl;
             print_f(fields_vect,dmin,dmax,dx,file_path,file_path,gl,gr,status,totalnodes,mynode,request); // the print_f function is called
             //cout<<t<<endl;
         }
@@ -1984,7 +1983,7 @@ void read_parameters(string name_parameters_file, double &dmin, double &dmax, do
 }
 
 
-// Function usefull in a parallelized setting
+// Functions usefull in a parallelized setting
 
 void communication(std::vector< std::vector<double> > &fields_vect,int j,int index_dmax_local,int index_dmin_local,int nitems,int mynode,int totalnodes,MPI_Status status)
 {

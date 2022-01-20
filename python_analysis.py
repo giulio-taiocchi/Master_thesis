@@ -159,6 +159,7 @@ def self_similar_cordinates(space_vector, time_vector):
             x.append(space_vector[i]/time_vector[t])
         X.append(x)
     return(X,T)
+
 def read_parallel_data(d_max,d_min,gl,gr,domain_lenght,h1,h2,h3,number_of_proc,number_steps,names):
     big_DF_sup=[]
     S = []
@@ -235,7 +236,31 @@ def read_parallel_data(d_max,d_min,gl,gr,domain_lenght,h1,h2,h3,number_of_proc,n
         new_big_DF.append(resolution_vector)
     return(new_big_DF)
 
-
+def read_3D_parallel_data(names,number_of_proc):
+    Big_Fields = []
+    Big_Grid = []
+    for i in range(0,len(names[:]),number_of_proc):
+        Grid = []
+        Fields = []
+        fields = ["field0","field1","field2"]
+        N_points = []
+        DF_support = []
+        for n in range (0, number_of_proc):
+            DF_support.append( pd.read_csv(names[i+n]))
+            N_points.append(int(np.array(DF_support[n]["x_0"])[-1]))
+        Grid = np.array(DF_support[0][["x_0","x_1","x_2"]])[0:N_points[0]].astype(float)
+        for n in range (1, number_of_proc):
+            Grid_supp = np.array(DF_support[n][["x_0","x_1","x_2"]])[0:N_points[n]].astype(float)
+            Grid = np.append(Grid,Grid_supp,axis=0)
+        print("Grid shape ",Grid.shape)
+        Fields = np.array(DF_support[0][fields])[0:N_points[0]].astype(float)
+        for n in range (1, number_of_proc):
+            Fields_supp = np.array(DF_support[n][fields])[0:N_points[n]].astype(float)
+            Fields = np.append(Fields,Fields_supp,axis=0)
+        Fields.shape
+        Big_Grid.append(Grid)
+        Big_Fields.append(Fields)
+    return(Big_Grid)
 
 ### script to call in the main ###
 """
