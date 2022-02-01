@@ -1,8 +1,13 @@
 # support function to perform data analysis #
-
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from python_analysis import *
+import matplotlib.animation as animation
+from numpy import random
+from sklearn.linear_model import LinearRegression
+from scipy.signal import argrelextrema
+
 
     
 
@@ -125,16 +130,78 @@ def model3_gaussian_solution(x,t,a):
     
     
 def hyperbolic_chi_we_solution(r,t,a,ds,s):
-    return(-a*np.exp(-ds**2*(-r+t)**2)+a*np.exp(-ds**2*(r**3+r*s**2-r**2*t+s**2*t)**2/(r**2-s**2)**2)*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/r)
-    
+    return(-a*np.exp(-ds**2*(-r+t)**2)+a*np.exp(-ds**2*(r**3+r*s**2-r**2*t+s**2*t)**2/(r**2-s**2)**2)*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/r) 
+ 
+
+def hyperbolic_chi_we_solution(r,t,a,ds,s):
+    return((a*(r-t)*np.exp(-1*ds**2*(r-t)**2)+a*(-r+t+2*r/(1-r**2/s**2))*np.exp(-1*ds**2*(-r+t+2*r/(1-r**2/s**2))**2 ))*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/2/r)
+
+
+def hyperbolic_chi_we_charvar_solution_PsiPlus(r,t,a,B,ds,s):
+    A = a
+    R = r/(1-r**2/s**2)
+    T = t+R-r
+    Chi = (1+R**2)**0.5
+    return(A*np.exp(-ds**2*(R+T)**2)*(R-T+np.exp(4*ds**2*R*T)*(-R+T-4*ds**2*R*(R+T)**2))*Chi**2/2/R**2)
+
+
+def spherical_we_solution(r,t,a,ds):
+    return( (a*(r-t)*np.exp(-(ds*(r-t))**2)+a*(r+t)*np.exp(-(ds*(r+t))**2))/2/r )
+
+def initial_test(r,t,a,ds,s):
+    return(a*(1+r**2/(1-r**2/s**2)**2)**0.5*np.exp(-ds**2*(r/(1-r**2/s**2))**2))
+
 def initialize_func_vect(func,domain,dx,t):
     vect = []
     for x in domain:
         vect.append(func(x,t))
     return(vect)
 
+def m1_solution_Psi(r,t,a,ds):
+    return( (a*(r-t)*np.exp(-(ds*(r-t))**2)+a*(r+t)*np.exp(-(ds*(r+t))**2))/2/r )
 
 
+# MODEL 1 WITH CHARACTERISTIC VARIABLES, THEORETICAL SOLUTIONS 
+
+def m1_solution_PsiPlus(R,T,A,ds):
+    B = 1
+    J = R-T
+    K = np.exp(4*ds**2*R*T)
+    L = R+T
+    return( A*B*(J-J*K-4*ds**2*L**2*R)/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R)))
+
+# MODEL 1 WITH CHARACTERISTIC VARIABLES, hyperboloidal compactification, Chi rescaling, THEORETICAL SOLUTIONS 
+
+def hyperbolic_chi_m1_charvar_solution_Psi(r,t,a,B,ds,s):
+    A = a
+    R = r/(1-r**2/s**2)
+    T = t+R-r
+    Chi = (1+R**2)**0.5
+    return( np.log(1+B/(2*R)*(A*np.exp(-ds**2*(R-T)**2)*(R-T)+A*np.exp(-ds**2*(R+T)**2)*(R+T)))*Chi )
+
+
+def hyperbolic_chi_m1_charvar_solution_PsiPlus(r,t,a,B,ds,s):
+    A = a
+    R = r/(1-r**2/s**2)
+    T = t+R-r
+    Chi = (1+R**2)**0.5
+    J = R-T
+    K = np.exp(4*ds**2*R*T)
+    L = (R+T)**2
+    return(  (A*B*(J-J*K-4*ds**2*R*L)*Chi**2)/(R*(2*np.exp(ds**2*L)*R+A*B*(J*K+R+T)))  )
+
+def hyperbolic_chi_m1_charvar_solution_PsiMinus(r,t,a,B,ds,s):
+    A = a
+    R = r/(1-r**2/s**2)
+    T = t+R-r
+    Chi = (1+R**2)**0.5
+    J = R-T
+    K = np.exp(4*ds**2*R*T)
+    L = (R+T)
+    return(  A*B*(L+K*((-1+2*ds*J)*(1+2*ds*J)*R-T))*Chi )/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R))
+
+
+#-------------------- usefull functions for the pwer law scaling ---------------------#
 # big_DF[ind_run][ind_dx][ind_time][ind_field]
 def runs_maximums_vector(vectors,ind_dx,field):
     maximums_vector_run = []
@@ -262,7 +329,173 @@ def read_3D_parallel_data(names,number_of_proc):
         Big_Fields.append(Fields)
     return(Big_Grid)
 
-### script to call in the main ###
+def names_generator(data,epsilon,amplitude_vector,number_of_proc,model,dx,number_steps,range_time):
+    names = []
+    for i in data:
+        for e in range(len(epsilon)):
+            for a in range(len(amplitude_vector)):
+                for n in range(number_of_proc):
+                    names.append("./data/"+model+"/data"+str(i)+"/processor_"+                                                                                                str(n)+"_ampl_"+str(format(amplitude_vector[a],'.6f'))+"_eps"+str(format(epsilon[e],'.6f'))+"_dx_"+str(format(dx,'.6f'))+"steps"+str(number_steps)+"last_time"+str(format(range_time, '.6f'))+".csv") 
+    return(names)
+    
+    
+### PLOT FUNCTIONS ###
+def plot_pw_convergence(big_DF,gl,gr,self_conv_test_vect_pw,model,data,field,epsilon,n_ind,dx,number_steps,ylim_inf,ylim_sup):
+    fig, ax = plt.subplots()
+
+    line1, = ax.plot(big_DF[n_ind][0][1]['x'][gl:-gr], self_conv_test_vect_pw[1][0],'-.')
+    line2, = ax.plot(big_DF[n_ind][0][1]['x'][gl:-gr], self_conv_test_vect_pw[1][1],'.-')
+    plt.grid()
+    plt.ylim(ylim_inf,ylim_sup)
+    plt.xlabel('space')
+    #plt.ylabel('(h1-h2)-4(h2-h3)')
+    data_name = "./data/"+model+"/data"+str(data[0])+"/"+field+"_epsilon"+str(epsilon[n_ind])+"dx"+str(dx)+"_pointwise_convergence.mp4"
+
+    def animate1(i):
+        line1.set_ydata(self_conv_test_vect_pw[i][0])  # update the data.
+        line2.set_ydata(self_conv_test_vect_pw[i][1])
+        return line1,line2
+
+    #def animate2(i):
+     #   line2.set_ydata(self_conv_test_vect_pw[i][1])  # update the data.
+      #  return line2,
+
+
+    ani = animation.FuncAnimation(
+        fig, animate1, interval=80, blit=True, frames=number_steps-1)
+    ani.save(data_name)
+
+    
+def animate_one_field(field_number,h_ind,big_DF_ind,model,data,big_DF,ylim_inf,ylim_sup,number_steps):
+    fig, ax = plt.subplots()
+    field = field_number
+    data_name = "./data/"+model+"/data"+str(data[0])+"/field"+str(field)+".mp4"
+    line, = ax.plot(big_DF[big_DF_ind][h_ind][0]['x'], big_DF[big_DF_ind][h_ind][0]['field'+str(field)])
+    plt.ylim(ylim_inf,ylim_sup)
+    plt.xlabel('space')
+    plt.ylabel('field'+str(field))
+    #plt.xlim(-5,0)
+    plt.grid()
+
+    def animate(i):
+        #line.set_xdata(DF[0][i]['x'])
+        line.set_ydata(big_DF[big_DF_ind][h_ind][i]['field'+str(field)])  # update the data.
+        return line,
+
+
+    ani = animation.FuncAnimation(
+        fig, animate, interval=50, blit=True, save_count=number_steps-1)
+    ani.save(data_name)
+    
+def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,ylim_inf,ylim_sup,number_steps,domain_lenght):
+    data_name = "./data/"+model+"/data"+str(data[0])+"/fields.mp4"
+    fig = plt.figure()
+    ax1 = plt.axes(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
+    line, = ax1.plot([], [])
+    plt.xlabel('x')
+    plt.ylabel('fields')
+    plotlays = [fields_to_print]
+    lines = []
+    for index in (fields_to_print):
+        lobj = ax1.plot([],[],'-.',lw=3,alpha=0.6,label=index)[0]
+        lines.append(lobj)
+
+    x = []
+    y = []
+    for i in (fields_to_print):
+        x.append([big_DF[0][h_ind][0]['x']]),
+        y.append([ big_DF[0][h_ind][0][i]])
+
+
+    def init():
+        for line in lines:
+            line.set_data(x,y)      
+            #line.set_data([x1,x2,x3,x4,x5,x6,x7],[y1,y2,y3,y4,y5,y6,y7])
+        return lines
+
+    def animate(i):
+        for n,j in enumerate (fields_to_print):
+            x[n] = big_DF[big_DF_ind][h_ind][0]['x']
+            y[n] = big_DF[big_DF_ind][h_ind][i][j]
+        xlist = x
+        ylist = y
+
+        #for index in range(0,1):
+        for lnum,line in enumerate(lines):
+            line.set_data(xlist[lnum], ylist[lnum]) # set data for each line separately. 
+
+        return lines
+
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=int(number_steps-1), interval=75, blit=True)
+    plt.legend()
+    plt.grid()
+    plt.show()
+    anim.save(data_name)
+    
+    
+def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,number_steps,domain_lenght,ylim_inf,ylim_sup,times,amplitude_vector):
+    data_name = "./data/"+model+"/data"+str(data[0])+"/theoretical_comparison.mp4"
+    fig = plt.figure()
+    ax1 = plt.axes(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
+    line, = ax1.plot([], [])
+    plt.xlabel('x')
+    plt.ylabel('fields')
+    plotlays = [fields_to_print]
+    lines = []
+    for index in (fields_to_print[0:-1]):
+        lobj = ax1.plot([],[],'+',lw=3,alpha=0.6,label=index)[0]
+        lines.append(lobj)
+    lobj = ax1.plot([],[],lw=3,alpha=0.6,label="theoretical solution")[0]
+    lines.append(lobj)
+
+    x = []
+    y = []
+    for i in (fields_to_print[0:-1]):
+        x.append([big_DF[big_DF_ind][h_ind][0]['x']]),
+        y.append([ big_DF[big_DF_ind][h_ind][0][i]])
+
+    x.append([big_DF[0][h_ind][0]['x']]),
+    y.append([theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[0],float(amplitude_vector[big_DF_ind]),1)])
+    #y.append([hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[0],1,1/5,5)])
+
+    def init():
+        for line in lines:
+            line.set_data(x,y)      
+            #line.set_data([x1,x2,x3,x4,x5,x6,x7],[y1,y2,y3,y4,y5,y6,y7])
+        return lines
+
+
+
+
+
+    def animate(i):
+        for n,j in enumerate (fields_to_print[0:-1]):
+            x[n] = big_DF[big_DF_ind][h_ind][0]['x']
+            y[n] = big_DF[big_DF_ind][h_ind][i][j]
+        x[1] = big_DF[big_DF_ind][h_ind][0]['x']
+        y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]),1)
+        #y[1] = hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[i],1,1/5,5)
+
+
+        xlist = x
+        ylist = y
+
+        #for index in range(0,1):
+        for lnum,line in enumerate(lines):
+            line.set_data(xlist[lnum], ylist[lnum]) # set data for each line separately. 
+
+        return lines
+
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=int(number_steps-1), interval=50, blit=True)
+    plt.legend()
+    plt.grid()
+    plt.show()
+    anim.save(data_name)
+### scripts to call in the main ###
 """
 
 # create a vector of the convergence test. 

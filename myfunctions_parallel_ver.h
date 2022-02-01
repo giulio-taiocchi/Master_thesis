@@ -38,8 +38,12 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
     {
         for (int l=0;l<parameters_ic_vector.size();l++)
         {
-            cout<<"processor :"<<mynode<<"\nepsilon = "<<epsilon1[e]<<" amplitude = "<<parameters_ic_vector[l]<<endl;
-            
+            if(mynode==0)
+            {
+                cout<<"------------------------------------------------------------------------------------------"<<endl;
+                cout<<"processor :"<<mynode<<"\nepsilon = "<<epsilon1[e]<<" amplitude = "<<parameters_ic_vector[l]<<endl;
+                cout<<"------------------------------------------------------------------------------------------"<<endl;
+            }
             // initialize fields
             
             
@@ -150,11 +154,11 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
 
     
     // populate the ghost zone of the fields, we need them to calculate k1
-    /*
+    
     for (int j=0; j <N; j++)
     {
         ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
-    }*/
+    }
     
     // k1 building
     for (int j=0; j <N; j++)
@@ -166,8 +170,8 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         // calculating the k1 function (just in the interval associated to the actual processor)
         for (int i=index_dmin_local;i<index_dmax_local;i++)
         {
-            k1[j][i] = (evo[j](j,i,fields_vect,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl));  
-                            //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt));
+            k1[j][i] = (evo[j](j,i,fields_vect,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl))
+                            +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
         }
         
         // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
@@ -178,31 +182,34 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         
         // evaluating the boundary of k1
         bc[j](k1,fields_vect, t,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param,evo[j]);
-        //k1[j][gl] += artificial_diss(epsilon,ord,fields_vect,j,gl,dx,dt);
-        //k1[j][gr] += artificial_diss(epsilon,ord,fields_vect,j,gr,dx,dt);
+        k1[j][gl] += artificial_diss(epsilon,ord,fields_vect,j,gl,dx,dt);
+        k1[j][gr] += artificial_diss(epsilon,ord,fields_vect,j,gr,dx,dt);
         // GP extrapolation for k1 vector
-        ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
-
+    }
+    for (int j=0; j <N; j++)
+    {
     // computing the argument for the next coefficient k2
         if(mynode==0)
         {
+            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
             for (int i=0;i<index_dmax_local+1;i++)
             {
-                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];
+                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }
         }
         if(mynode==totalnodes-1)
         {
+            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
             for (int i=index_dmin_local-1;i<S;i++)
             {
-                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];
+                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }
         }
         if(mynode!=0 && mynode!=totalnodes-1)
         {
             for (int i=index_dmin_local-1;i<index_dmax_local+1;i++)
             {
-                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];
+                support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];//+ artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }
         }
     }
@@ -214,8 +221,8 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     {
         for (int i=index_dmin_local;i<index_dmax_local;i++)
         {
-            k2[j][i] = evo[j](j,i,support_k1,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt/2,gl);
-            //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2));
+            k2[j][i] = evo[j](j,i,support_k1,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt/2,gl)
+            +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
         }
         
         // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
@@ -226,24 +233,27 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         //boundary conditions update
         bc[j](k2,support_k1, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param,evo[j]);
         // artificial dissipation
-        //k2[j][gl] += artificial_diss(epsilon,ord,support_k1,j,gl,dx,dt/2);
-        //k2[j][gr] += artificial_diss(epsilon,ord,support_k1,j,gr,dx,dt/2);
+        k2[j][gl] += artificial_diss(epsilon,ord,fields_vect,j,gl,dx,dt/2);
+        k2[j][gr] += artificial_diss(epsilon,ord,fields_vect,j,gr,dx,dt/2);
         
-        
-        ghost_point_extrapolation(k2, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
+    }
+    for (int j=0; j <N; j++)
+    {
         
         if(mynode==0)
         {
+            ghost_point_extrapolation(k2, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
             for (int i=0;i<index_dmax_local+1;i++)
             {
-                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];
+                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];//+ artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }  
         }
         if(mynode==totalnodes-1)
         {
+            ghost_point_extrapolation(k2, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
             for (int i=index_dmin_local-1;i<S;i++)
             {
-                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];
+                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }
         }
         
@@ -251,7 +261,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         {
             for (int i=index_dmin_local-1;i<index_dmax_local+1;i++)
             {
-                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];
+                support_k2[j][i] = (k2[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
             }
         }
     }
@@ -261,8 +271,8 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     {
         for (int i=index_dmin_local;i<index_dmax_local;i++)
         {
-            k3[j][i] = evo[j](j,i,support_k2,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt,gl);
-            //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt));
+            k3[j][i] = evo[j](j,i,support_k2,dx,dmin,param,t+dt/2.,Dx,artificial_diss,epsilon,ord,dt,gl)
+            +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
         }
         
         // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
@@ -270,23 +280,27 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         
         communication(k3,j,index_dmax_local,index_dmin_local,nitems,mynode,totalnodes,status);
         bc[j](k3,support_k2, t+dt/2.,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param,evo[j]);
-        //k3[j][gl] += artificial_diss(epsilon,ord,support_k2,j,gl,dx,dt/2);
-        //k3[j][gr] += artificial_diss(epsilon,ord,support_k2,j,gr,dx,dt/2);
+        k3[j][gl] += artificial_diss(epsilon,ord,fields_vect,j,gl,dx,dt/2);
+        k3[j][gr] += artificial_diss(epsilon,ord,fields_vect,j,gr,dx,dt/2);
+    }
+    for (int j=0; j <N; j++)
+    {
         
-        ghost_point_extrapolation(k3, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
         if(mynode==0)
         {
+            ghost_point_extrapolation(k3, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
             for (int i=0;i<index_dmax_local+1;i++)
             {
-                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];
+                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
             }
         }
         
         if(mynode==totalnodes-1)
         {
+            ghost_point_extrapolation(k3, t+dt/2.,dx,dt/2,j,gl,gr,dmin,dmax);
             for (int i=index_dmin_local-1;i<S;i++)
             {
-                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];
+                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
             }
         }
         
@@ -294,7 +308,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         {
             for (int i=index_dmin_local-1;i<index_dmax_local+1;i++)
             {
-                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];
+                support_k3[j][i] = k3[j][i]*dt + fields_vect[j][i];//+ artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
             }
         }
         
@@ -306,17 +320,19 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     {
         for (int i=index_dmin_local;i<index_dmax_local;i++)
         {
-            k4[j][i] = evo[j](j,i,support_k3,dx,dmin,param,t+dt,Dx,artificial_diss,epsilon,ord,dt/2,gl);
-            //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
+            k4[j][i] = evo[j](j,i,support_k3,dx,dmin,param,t+dt,Dx,artificial_diss,epsilon,ord,dt/2,gl)
+            +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
         }
         // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
         // each processor needs to receive (and send) the borders of its subdomain
         communication(k4,j,index_dmax_local,index_dmin_local,nitems,mynode,totalnodes,status);
         
         bc[j](k4,support_k3, t+dt,dx,dt,j,gl,gr,dmin,dmax,Dx,artificial_diss,epsilon,ord,param,evo[j]);
-        //k4[j][gl] += artificial_diss(epsilon,ord,support_k3,j,gl,dx,dt);
-        //k4[j][gr] += artificial_diss(epsilon,ord,support_k3,j,gr,dx,dt);
-        
+        k4[j][gl] += artificial_diss(epsilon,ord,fields_vect,j,gl,dx,dt);
+        k4[j][gr] += artificial_diss(epsilon,ord,fields_vect,j,gr,dx,dt);
+    }
+    for (int j=0; j <N; j++)
+    {
         ghost_point_extrapolation(k4, t+dt,dx,dt,j,gl,gr,dmin,dmax);
     }
     // we create a new vector that contains all the new fields. It is a support vector that will be swapped with the old one
@@ -329,28 +345,26 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         {
              for (int i=gl;i<index_dmax_local;i++)
             {
-                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.
-                +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
-            }
-            ghost_point_extrapolation(new_fields_vect,t+dt,dx,dt,j,gl,gr,dmin,dmax);
+                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2.*k2[j][i]+2.*k3[j][i]+k4[j][i])/6.;
+                //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/6);
+            }               
         }
         
         if(mynode==totalnodes-1)
         {
             for (int i=index_dmin_local;i<S;i++)
             {
-                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.
-                                        +artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
-            }
-            ghost_point_extrapolation(new_fields_vect,t+dt,dx,dt,j,gl,gr,dmin,dmax);
+                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2.*k2[j][i]+2.*k3[j][i]+k4[j][i])/6.;
+                                        //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/6);
+            }            
         }
         
         if(mynode!=0 && mynode!=totalnodes-1)
         {
             for (int i=index_dmin_local;i<index_dmax_local;i++)
             {
-                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2*k2[j][i]+2*k3[j][i]+k4[j][i])/6.
-                                        +dt*artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt);
+                new_fields_vect[j][i] = fields_vect[j][i] + dt*(k1[j][i]+2.*k2[j][i]+2.*k3[j][i]+k4[j][i])/6.;
+                                        //+artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/6);
             }
         }
         communication(new_fields_vect,j,index_dmax_local,index_dmin_local,nitems,mynode,totalnodes,status);
@@ -358,12 +372,15 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     
 
     // populate the ghost zone of the fields, we need them to calculate k1 in the next time step
-    /*for (int j=0; j <N; j++)
+    for (int j=0; j <N; j++)
     {
-        ghost_point_extrapolation(new_fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
+        if(mynode==0 || mynode==totalnodes-1)
+        {
+            ghost_point_extrapolation(new_fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
+        }
     }
     //cout<<"old "<<fields_vect.size()<<"new "<<new_fields_vect.size()<<endl;
-    */
+    
     return(new_fields_vect);
 }
 
@@ -476,7 +493,7 @@ double wave_eq_compactified_phi(int ind_field,int ind_space,std::vector<std::vec
 }
 
 
-//------------------- CHI RESCALING HYPERBOLOIDAL FOLIATION -------------------//
+//------------------- WAVE EQUATION: CHI RESCALING HYPERBOLOIDAL FOLIATION -------------------//
 
 // compactification: T = t + H(R), H'=1-1/R', R=r/(1-(r/s)^2)
 // rescaling: by chi(R) = (1+R^2)^(1/2)
@@ -547,6 +564,88 @@ double model1_PI(int ind_field,int ind_space,std::vector<std::vector<double>> fi
     return (3* ( pow((x+dx),2)*fields_vect[1][ind_space+1] - pow((x-dx),2)*fields_vect[1][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) +param[0]*(pow(fields_vect[1][ind_space],2)-pow(fields_vect[0][ind_space],2)) );
 }
 
+//------------------- MODEL 1: CHARACTERISTIC VARIABLE IN FLAT SPACE -------------------//
+//fields_vect [0]-> PsiPlus, [1]->PsiMinus, [2]->Psi
+
+double model1_charvar_Psi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    return((fields_vect[0][ind_space]+fields_vect[1][ind_space])/2.);
+}
+
+double model1_charvar_PsiPlus(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    return(-fields_vect[0][ind_space]*fields_vect[1][ind_space]
+            +Dx[0](fields_vect[0],ind_space,dx)/2.
+            +Dx[0](fields_vect[1],ind_space,dx)/2.
+            +0.5*(3.* ( pow((r+dx),2)*fields_vect[0][ind_space+1] - pow((r-dx),2)*fields_vect[0][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))
+            -0.5*(3.* ( pow((r+dx),2)*fields_vect[1][ind_space+1] - pow((r-dx),2)*fields_vect[1][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))
+            );
+}
+
+double model1_charvar_PsiMinus(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    return(-fields_vect[0][ind_space]*fields_vect[1][ind_space]
+            -Dx[0](fields_vect[0],ind_space,dx)/2.
+            -Dx[0](fields_vect[1],ind_space,dx)/2.
+            +0.5*(3.* ( pow((r+dx),2)*fields_vect[0][ind_space+1] - pow((r-dx),2)*fields_vect[0][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))
+            -0.5*(3.* ( pow((r+dx),2)*fields_vect[1][ind_space+1] - pow((r-dx),2)*fields_vect[1][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))
+            );
+}
+
+//------------------- MODEL 1: CHARACTERISTIC VARIABLE, CHI RESCALING, HYPERBOLOIDAL FOLIATION -------------------//
+//fields_vect [0]-> PsiPlus, [1]->PsiMinus, [2]->Psi
+
+double model1_charvar_compactified_Psi_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    double s = param[0];
+    double A = -r*r+s*s;
+    double G = pow(r,4)+pow(s,4)+r*r*s*s*(s*s-2.);
+    
+    return ( 0.5*(fields_vect[1][ind_space]+A*fields_vect[0][ind_space]/2/sqrt(G)));
+}
+
+double model1_charvar_compactified_PsiPlus_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    double s = param[0];
+    
+    double A = -r*r+s*s;
+    double B = pow(r,7)-pow(r,5)*s*s*(2+s*s)+r*pow(s,6)*(2+s*s);
+    double C = pow(r,3)+r*s*s*(-2+s*s);
+    double D = pow(r,4) - 4.*r*r*s*s-pow(s,4);
+    double G = pow(r,4)+pow(s,4)+r*r*s*s*(s*s-2.);
+    double M = r*r+s*s;
+    double N = 0.5*(-2.+M*s*s/G);
+    double O = -2.*A*A+pow(s,8)/G;
+    return (B*fields_vect[0][ind_space]/D/G
+            +M*fields_vect[1][ind_space]*(C+A*s*s*fields_vect[0][ind_space])/sqrt(G)/D
+            -M*pow(s,4)*Dx[0](fields_vect[1],ind_space,dx)/2./D/sqrt(G)
+            +M*pow(s,4)*(3.* ( pow((r+dx),2)*fields_vect[1][ind_space+1] - pow((r-dx),2)*fields_vect[1][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3))) / (2.*D)/sqrt(G)
+            +O*Dx[0](fields_vect[0],ind_space,dx)/(2.*D)
+            -pow(s,8)*(3.* ( pow((r+dx),2)*fields_vect[0][ind_space+1] - pow((r-dx),2)*fields_vect[0][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))/(2.*D*G)
+            );
+}
+
+double model1_charvar_compactified_PsiMinus_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
+{
+    double r = dmin+dx*double(ind_space-gl);
+    double s = param[0];
+    
+    double G = pow(r,4)+pow(s,4)+r*r*s*s*(s*s-2.);
+    double M = r*r+s*s;
+    double N = 0.5*(-2.+M*s*s/G);
+    
+    return (M*fields_vect[1][ind_space]*(r-s*s*fields_vect[0][ind_space])/G
+            +N*Dx[0](fields_vect[1],ind_space,dx)
+            -M*s*s*(3.* ( pow((r+dx),2)*fields_vect[1][ind_space+1] - pow((r-dx),2)*fields_vect[1][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))/(2*G)
+            -M*Dx[0](fields_vect[0],ind_space,dx)/(2*sqrt(G))
+            +M*(3.* ( pow((r+dx),2)*fields_vect[0][ind_space+1] - pow((r-dx),2)*fields_vect[0][ind_space-1] )/(pow((r+dx),3)-pow((r-dx),3)))/(2*sqrt(G))
+            );
+}
 
 // ----------- // MODEL 3 // ----------- //
 
@@ -567,7 +666,7 @@ double model3_PI2(int ind_field,int ind_space,std::vector<std::vector<double>> f
     double x = dmin+dx*(ind_space-gl);
     //cout<<"x in eq for PI "<<x<<endl;
     //cout<< " dt dx gl ord espilon "<<dt<<" "<<dx<<" "<<gl<<" "<<ord<<" "<<epsilon<<endl;
-    return (3* ( pow((x+dx),2)*fields_vect[4][ind_space+1] - pow((x-dx),2)*fields_vect[4][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + 
+    return (3.* ( pow((x+dx),2)*fields_vect[4][ind_space+1] - pow((x-dx),2)*fields_vect[4][ind_space-1] )/(pow((x+dx),3)-pow((x-dx),3)) + 
             (fields_vect[5][ind_space] - param[0] * fields_vect[2][ind_space])/pow(param[0],2)*
             (pow(fields_vect[1][ind_space],2)+pow(fields_vect[4][ind_space],2)-pow(fields_vect[0][ind_space],2)-pow(fields_vect[3][ind_space],2))
             );
@@ -668,9 +767,9 @@ double initial_gauss_phi_compactified(double x,double init_param)
 }
 
 
-// ------ hyperboloidal compactification and Chi function rescaling  ------ //
+// ------ hyperboloidal compactification and Chi function rescaling  for the wave equation------ //
 
-double initial_gauss_PI_compactified_Chi1(double r,double init_param)
+double initial_gauss_PI_compactified_Chi1_we(double r,double init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -685,7 +784,7 @@ double initial_gauss_PI_compactified_Chi1(double r,double init_param)
     double D = (-r+2.*R)*(-r+2.*R);
     if(r!=0 && r!=s)
     {
-        return( (-A*exp(-C)+A*exp(B)+2.*A*C*exp(-C)-2.*A*D*ds_sq*exp(B))*Chi/2/R);
+        return( (-A*exp(-C)+A*exp(B)+2.*A*C*exp(-C)-2.*A*D*ds_sq*exp(B))*Chi/2./R);
     }
     else if (r==0)
     {
@@ -693,10 +792,10 @@ double initial_gauss_PI_compactified_Chi1(double r,double init_param)
     }
     else
     {
-        return(1./2.*(-A*exp(-C)+2*A*C*exp(-C)));
+        return(1./2.*(-A*exp(-C)+2.*A*C*exp(-C)));
     }
 }
-double initial_gauss_PHI_compactified_Chi(double x,double init_param)
+double initial_gauss_PHI_compactified_Chi_we(double x,double init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -715,7 +814,7 @@ double initial_gauss_PHI_compactified_Chi(double x,double init_param)
     }
 }
 
-double initial_gauss_PHI_compactified_Chi1(double r,double init_param)
+double initial_gauss_PHI_compactified_Chi1_we(double r,double init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -725,7 +824,7 @@ double initial_gauss_PHI_compactified_Chi1(double r,double init_param)
     double ChiPrime = R /Chi;
     double A = init_param;
     double B = exp(-pow(dev_std,2)*pow(r-2*R,2));
-    double C = r-2*R;
+    double C = r-2.*R;
     double D = -r+R;
     double G = dev_std*dev_std*r*r;
     if(r!=s && r!=0)
@@ -742,7 +841,7 @@ double initial_gauss_PHI_compactified_Chi1(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi(double r,double init_param)
+double initial_gauss_phi_compactified_Chi_we(double r,double init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -760,7 +859,7 @@ double initial_gauss_phi_compactified_Chi(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi1(double r,double init_param)
+double initial_gauss_phi_compactified_Chi1_we(double r,double init_param)
 {
     double s = 5.;
     double dev_std = 1./5.;
@@ -783,6 +882,117 @@ double initial_gauss_phi_compactified_Chi1(double r,double init_param)
     }
 }
 
+// -------- MODEL1 char variable, flat space -------- //
+
+double initial_gauss_PsiPlus_charvar_m1(double r,double init_param)
+{
+    double a = init_param;
+    double b = 1;
+    double ds = 1;
+    return(-(2*a*b*ds*ds*r)/(a*b+exp(ds*ds*r*r)));
+}
+
+double initial_gauss_PsiMinus_charvar_m1(double r,double init_param)
+{
+    double a = init_param;
+    double b = 1;
+    double ds = 1;
+    return((2*a*b*ds*ds*r)/(a*b+exp(ds*ds*r*r)));
+}
+
+double initial_gauss_Psi_charvar_m1(double r,double init_param)
+{
+    double a = init_param;
+    double b = 1;
+    double ds = 1;
+    return(log(1+a*b*exp(-ds*ds*r*r)));
+}
+
+// ------ hyperboloidal compactification and Chi function rescaling for the Model 1 equations  with char variables------ //
+
+double initial_gauss_Psi_compactified_Chi_charvar_m1(double r,double init_param)
+{
+    double s = 5.;
+    double dev_std = 1./5.;
+    double ds_sq = dev_std*dev_std;
+    double rate_of_square = pow(r,2)/pow(s,2);
+    double R = r/(1-rate_of_square);
+    double Chi = pow(1+R*R,0.5);
+    double ChiPrime = R /Chi;
+    double A = init_param;
+    double B = 1.;
+    if( r!=0 && r!=s)
+    {
+        return(log(1.+B*(A*exp(-ds_sq*r*r)*r-A*exp(-ds_sq*pow(r-2.*R,2))*(r-2.*R))/(2.*R))*Chi);
+    }
+    
+    else if (r==s)
+    {
+        return(B*A/2.*exp(-ds_sq*r*r)*r);
+    }
+    else
+    {
+        return(log(1+A*B));
+    }
+}
+
+double initial_gauss_PsiPlus_compactified_Chi_charvar_m1(double r,double init_param)
+{
+    double s = 5.;
+    double dev_std = 1./5.;
+    double ds_sq = dev_std*dev_std;
+    double rate_of_square = pow(r,2)/pow(s,2);
+    double R = r/((double)1.-rate_of_square);
+    double Chi = pow((double)1.+R*R,0.5);
+    double ChiPrime = R /Chi;
+    double A = init_param;
+    double B = 1.;
+    double K = exp(-ds_sq*pow(r-2.*R,2));
+    double J = exp( ds_sq*r*r);
+    //cout<<"K: "<<K<<endl;
+    if( r!=0 && r!=s)
+    {
+        return(A*B*(-r+J*K*(r-(double)4.*ds_sq*pow(r-(double)2.*R,2)*R)) *Chi*Chi
+                /(R*(A*B*(r-J*K*(r-(double)2.*R))+(double)2.*J*R)) );
+    }
+    else if (r==s)
+    {
+        return(-B*A/(double)2.*r*exp(-ds_sq*r*r));
+    }
+    else
+    {
+        return(0);
+    }
+}
+
+double initial_gauss_PsiMinus_compactified_Chi_charvar_m1(double r,double init_param)
+{
+    double s = 5.;
+    double dev_std = 1./5.;
+    double ds_sq = dev_std*dev_std;
+    double rate_of_square = pow(r,2)/pow(s,2);
+    double R = r/(1-rate_of_square);
+    double Chi = pow(1+R*R,0.5);
+    double ChiPrime = R /Chi;
+    double A = init_param;
+    double B = 1.;
+    double K = exp( -pow(dev_std*(r - 2. *R),2));
+    double J = exp( pow(dev_std*r,2));
+    if( r!=0 && r!=s)
+    {
+        return(A*B*(-J*K*(r-2.*R)+(r+(-2.+4.*ds_sq*r*r)*R))*Chi
+                /(R*(A*B*(r-J*K*(r-2.*R))+2.*J*R))
+        );
+    }
+    else if (r==s)
+    {
+        return(B*A/2.*exp(-ds_sq*r*r)*(-2.+4.*ds_sq*r*r));
+    }
+    else
+    {
+        return(0);
+    }
+}
 
 // ------  ------  ------  ------  ------  ------  ------  ------  ------  ------
 
@@ -1090,48 +1300,9 @@ void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
     double s = param[0]; 
-    /*
-    double r = dmin;
-    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
-    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
-    double C = r- s;
-    double D = pow(r,4) - 3*r*r*s*s;
-    double F = pow(r,2) + s*s;
-    double G = pow(r,2)-3*s*s;
-    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
-    double L = pow(r,3)*s - r* pow(s,3);
-    double M = pow(r,4) + r*r * s*s - pow(s,4);
-    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
-    double O = pow(r,4)-pow(s,4);
     
-    
-    double left_value = 2*M*r*s*s*fields_vect_old[1][ind_space_left]/A/B
-            +3*O*O*pow(s,4)*fields_vect_old[2][ind_space_left]/(pow(A,2)*B)
-            +D*Dx[0](fields_vect_old[0],ind_space_left,dx)/H
-            -N*r*r*s*s*Dx[0](fields_vect_old[1],ind_space_left,dx)/A/B
-            -pow(s,8)/A/B* 3* (pow((r+dx),2)*fields_vect_old[1][ind_space_left+1] - pow((r-dx),2)*fields_vect_old[1][ind_space_left-1] )/(pow((r+dx),3)-pow((r-dx),3));
-    */
     double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
-    /*
-    r = dmax;
-    A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
-    B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
-    C = r- s;
-    D = pow(r,4) - 3*r*r*s*s;
-    F = pow(r,2) + s*s;
-    G = pow(r,2)-3*s*s;
-    H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
-    L = pow(r,3)*s - r* pow(s,3);
-    M = pow(r,4) + r*r * s*s - pow(s,4);
-    N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
-    O = pow(r,4)-pow(s,4);
     
-    double right_value =2*M*r*s*s*fields_vect_old[1][ind_space_left]/A/B
-            +3*O*O*pow(s,4)*fields_vect_old[2][last_ind]/(pow(A,2)*B)
-            +D*Dx[0](fields_vect_old[0],last_ind,dx)/H
-            -N*r*r*s*s*Dx[0](fields_vect_old[1],last_ind,dx)/A/B
-            -pow(s,8)/A/B* 3* (pow((r+dx),2)*fields_vect_old[1][last_ind+1] - pow((r-dx),2)*fields_vect_old[1][last_ind-1] )/(pow((r+dx),3)-pow((r-dx),3));
-    */
     double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
     //left no boundary
     fields_vect_new[j][ind_space_left] = (left_value);
@@ -1139,52 +1310,15 @@ void no_boundary_conditions_PI_hyp_Chi(std::vector<std::vector<double>> &fields_
     fields_vect_new[j][last_ind] = (right_value);   
 }
 
+
 void no_boundary_conditions_PHI_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
 {
     int last_ind = fields_vect_old[j].size()-1-gr;
     int ind_space_left=gl;
     double s = param[0]; 
-    /*
-    double r = dmin;
-    double A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
-    double B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
-    double C = r- s;
-    double D = pow(r,4) - 3*r*r*s*s;
-    double F = pow(r,2) + s*s;
-    double G = pow(r,2)-3*s*s;
-    double H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
-    double L = pow(r,3)*s - r* pow(s,3);
-    double M = pow(r,4) + r*r * s*s - pow(s,4);
-    double N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
-    double O = pow(r,4)-pow(s,4);
-    //cout<<" A B C D F G L"<<A<<";"<<B<<";"<<C<<";"<<D<<";"<<F<<";"<<G<<";"<<L<<endl;
-
-    
-    double left_value =  2*C*F*G*r*(r+s)*fields_vect_old[1][ind_space_left] /(A*B)
-            +(3*F*G*L*L*fields_vect_old[2][ind_space_left] )/(A*A*B)
-            +F*s*s*Dx[0](fields_vect_old[0],ind_space_left,dx)/H
-            +D*Dx[0](fields_vect_old[1],ind_space_left,dx)/H;
-    */
+   
     double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
-    /*
-    r = dmax;
-    A = pow(r,4) + pow(s,4) + r*r*s*s *(-2 + s*s);
-    B = pow(r,4) - 4 * pow(r,2)* s*s - pow(s,4);
-    C = r- s;
-    D = pow(r,4) - 3*r*r*s*s;
-    F = pow(r,2) + s*s;
-    G = pow(r,2)-3*s*s;
-    H = -pow(r,4) + 4*pow(r,2)*s*s + pow(s,4);
-    L = pow(r,3)*s - r* pow(s,3);
-    M = pow(r,4) + r*r * s*s - pow(s,4);
-    N = pow(r,4) - pow(s,4) + pow(s,6) + r*r* s*s* (-1 + s*s);
-    O = pow(r,4)-pow(s,4);
     
-    double right_value =  2*C*F*G*r*(r+s)*fields_vect_old[1][last_ind] /(A*B)
-            +(3*F*G*L*L*fields_vect_old[2][last_ind] )/(A*A*B)
-            +F*s*s*Dx[0](fields_vect_old[0],last_ind,dx)/H
-            +D*Dx[0](fields_vect_old[1],last_ind,dx)/H;
-     */
     double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
 
     //left no boundary
@@ -1236,7 +1370,88 @@ void radiative_outer_boundaries_PI_m1(std::vector<std::vector<double>> &fields_v
     
 }
 
+//------------------- MODEL 1: CHARACTERISTIC VARIABLE, FLAT SLICES -------------------//
+//fields_vect [0]-> PsiPlus, [1]->PsiMinus, [2]->Psi
 
+void radiative_outer_boundaries_PsiPlus_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = 0;  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
+
+void radiative_outer_boundaries_PsiMinus_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = -Dx[0](fields_vect_old[0],last_ind,dx) - Dx[0](fields_vect_old[1],last_ind,dx);  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
+
+void no_boundary_conditions_Psi_m1(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
+//------------------- MODEL 1: CHARACTERISTIC VARIABLE, CHI RESCALING, HYPERBOLOIDAL FOLIATION -------------------//
+//fields_vect [0]-> PsiPlus, [1]->PsiMinus, [2]->Psi
+
+void no_boundary_conditions_PsiPlus_charvar_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
+
+void no_boundary_conditions_PsiMinus_charvar_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
+
+void no_boundary_conditions_Psi_charvar_hyp_Chi(std::vector<std::vector<double>> &fields_vect_new,std::vector<std::vector<double>> fields_vect_old,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,derivative_vector Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,std::vector<double> &param, evolution_function evo)
+{
+    int last_ind = fields_vect_old[j].size()-1-gr;
+    int ind_space_left=gl;
+    double s = param[0]; 
+    double left_value = evo(j,gl,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);
+    double right_value = evo(j,last_ind,fields_vect_old,dx,dmin,param,t,Dx,artificial_diss,epsilon,ord,dt,gl);  
+    //left no boundary
+    fields_vect_new[j][ind_space_left] = (left_value);
+    //right no boundary
+    fields_vect_new[j][last_ind] = (right_value);   
+}
 
 // ------------- // MODEL 3 // ------------- //
 
@@ -1604,6 +1819,88 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vec
     {
         field_vect[j][i] = 4.*field_vect[j][i-1]-6*field_vect[j][i-2]+4.*field_vect[j][i-3]-field_vect[j][i-4];
     }
+}
+
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    
+    // attachment of the ghost points to the boundary of the function
+    // PsI is even
+    if (j==2 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    //PsiPlus condition
+    if (j==0 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[0][i] = field_vect[1][2*gl-i];
+        }
+        
+    }
+    // PsiMinus condition
+    if (j==1 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[1][i] = field_vect[0][2*gl-i];
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = 4.*field_vect[j][i-1]-6*field_vect[j][i-2]+4.*field_vect[j][i-3]-field_vect[j][i-4];
+    }
+}
+
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar_Chi(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+{
+    int S = field_vect[j].size();
+    double s = 5.;
+    double r;
+    double Chi;
+    double R;
+    // attachment of the ghost points to the boundary of the function
+    // PsI is even
+    if (j==2 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            field_vect[j][i] = field_vect[j][2*gl-i];
+        }
+    }
+    //PsiPlus condition
+    if (j==0 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            r = dmin+dx*double(gl-i);
+            R = r/(1.-r*r/s/s);
+            Chi = sqrt(1.+R*R);
+            field_vect[0][i] = Chi*field_vect[1][2*gl-i];
+        }
+        
+    }
+    // PsiMinus condition
+    if (j==1 )
+    {
+        for (int i=0; i<gl;i++)
+        {
+            r = dmin+dx*double(gl-i);
+            R = r/(1.-r*r/s/s);
+            Chi = sqrt(1.+R*R);
+            field_vect[1][i] = field_vect[0][2*gl-i]/Chi;
+        }
+    }
+    
+    for (int i=field_vect[j].size()-gr; i<field_vect[j].size();i++)
+    {
+        field_vect[j][i] = 4.*field_vect[j][i-1]-6*field_vect[j][i-2]+4.*field_vect[j][i-3]-field_vect[j][i-4];
+    }
     
 }
 
@@ -1747,12 +2044,13 @@ double artificial_dissipation_2_Husa(double epsilon,int ord,std::vector<std::vec
 // to control!
 double artificial_dissipation_4(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
 {
-    return(-epsilon*pow(dx,3)*pow(-1,ord)/4*(copy_fields_vect[j][i+2]-4*copy_fields_vect[j][i+1]+6*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4*copy_fields_vect[j][i-1]) );
+    return(-epsilon*pow(dx,3)*pow(-1,ord)/4*(copy_fields_vect[j][i+2]-4.*copy_fields_vect[j][i+1]+6*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4*copy_fields_vect[j][i-1]) );
 }
 
 double artificial_dissipation_2_ani(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
 {
-    return(-epsilon*pow(dx,2*ord-1)*pow(-1,ord)/4.*(copy_fields_vect[j][i+2]-4*copy_fields_vect[j][i+1]+6*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4*copy_fields_vect[j][i-1]) );
+    //cout<<"epsilon "<<epsilon<<"| order "<<order<<"| dx "<<dx<<endl;
+    return(-epsilon*pow(dx,-1.)*pow(-1,ord)/4.*(copy_fields_vect[j][i+2]-4.*copy_fields_vect[j][i+1]+6.*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4.*copy_fields_vect[j][i-1]) );
 }
     
 // ------------- NORMS AND CONVERGENCY -------------- //
@@ -1858,7 +2156,7 @@ void print_f(std::vector< std::vector<double> > fields_vect, double dmin, double
     }
     ofstream myfile_print_f;
     myfile_print_f.open (name_file,ios::app);
-    
+    myfile_print_f.precision(20);
     // headers of the columns
     myfile_print_f<<"x,";
     for (int i=0; i<fields_vect.size()-1; i++)

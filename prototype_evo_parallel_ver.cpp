@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
     auto start = high_resolution_clock::now();
     // set the decimal numbers precision of the output
-     cout.precision(10);
+    cout.precision(10);
      
     // calling the mpi initialization function
     int mynode, totalnodes;
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &mynode);
     
     // declare the path where the input/output files are collected   
-    string file_path = "./data/model3/data0/"; 
+    string file_path = "./data/hyperboloidal_model1/data0/"; 
     // declare the name of the parameters file
     string parameter_file_name = "parameters_file_0";
     
@@ -59,34 +59,34 @@ int main(int argc, char **argv)
     // initial condition //
     
     std::vector<double(*)(double, double)> initial_conditions;
-    initial_conditions.push_back(&initial_gauss_m3);    //PI1
-    initial_conditions.push_back(&initial_null);        //PHI1       
-    initial_conditions.push_back(&initial_null);        //phi1
-    initial_conditions.push_back(&initial_null);        //PI2
-    initial_conditions.push_back(&initial_null);        //PHI2       
-    initial_conditions.push_back(&initial_unity);       //phi2
+    initial_conditions.push_back(&initial_gauss_PsiPlus_compactified_Chi_charvar_m1);    //PI1
+    initial_conditions.push_back(&initial_gauss_PsiMinus_compactified_Chi_charvar_m1);        //PHI1       
+    initial_conditions.push_back(&initial_gauss_Psi_compactified_Chi_charvar_m1);        //phi1
+    //initial_conditions.push_back(&initial_null);        //PI2
+    //initial_conditions.push_back(&initial_null);        //PHI2       
+    //initial_conditions.push_back(&initial_unity);       //phi2
     
     
     
     // setup of the diffential operator functions of the specific differential equation
     std::vector< evolution_function > R_vector;
-    R_vector.push_back(&model3_PI1);
-    R_vector.push_back(&model3_PHI1);
-    R_vector.push_back(&model3_phi1);
-    R_vector.push_back(&model3_PI2);
-    R_vector.push_back(&model3_PHI2);
-    R_vector.push_back(&model3_phi2);
+    R_vector.push_back(&model1_charvar_compactified_PsiPlus_Chi);
+    R_vector.push_back(&model1_charvar_compactified_PsiMinus_Chi);
+    R_vector.push_back(&model1_charvar_compactified_Psi_Chi);
+    //R_vector.push_back(&model3_PI2);
+    //R_vector.push_back(&model3_PHI2);
+    //R_vector.push_back(&model3_phi2);
     
    
     // setup of the boundary conditions 
-    int number_of_bc = 6;
+    int number_of_bc = 3;
     std::vector< boundary_conditions_function> b_func(number_of_bc);
-    b_func[0] = (&radiative_outer_boundaries_PI1_m3);
-    b_func[1] = (&no_boundary_conditions_PHI1_m3);
-    b_func[2] = (&no_boundary_conditions_phi1_m3);
-    b_func[3] = (&radiative_outer_boundaries_PI2_m3);
-    b_func[4] = (&no_boundary_conditions_PHI2_m3);
-    b_func[5] = (&no_boundary_conditions_phi2_m3);
+    b_func[0] = (&no_boundary_conditions_PsiPlus_charvar_hyp_Chi);
+    b_func[1] = (&no_boundary_conditions_PsiMinus_charvar_hyp_Chi);
+    b_func[2] = (&no_boundary_conditions_Psi_charvar_hyp_Chi);
+    //b_func[3] = (&radiative_outer_boundaries_PI2_m3);
+    //b_func[4] = (&no_boundary_conditions_PHI2_m3);
+    //b_func[5] = (&no_boundary_conditions_phi2_m3);
     
     
     // setting the time integration parameters
@@ -107,9 +107,9 @@ int main(int argc, char **argv)
     
     // --------- EVOLUTION OF THE FUNCTION --------- //
     
-    multiple_parameters_run(parameters_ic_vector,initial_conditions,initialize_fields,dmin,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,onestep_RK4_1,gl,gr,ghost_point_extrapolation_2_ord_TEM_spherical_symmetry,artificial_dissipation_2_ani,epsilon1,print_f,file_path,MOL_RK4,ord,status,totalnodes,mynode,request,communication );
+    multiple_parameters_run(parameters_ic_vector,initial_conditions,initialize_fields,dmin,dmax,h1,h2,h3,dt1,dt2,dt3,integration_interval,step_to_save,Dx,R_vector,b_func,parameters,onestep_RK4_1,gl,gr,ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar_Chi,artificial_dissipation_2_Husa,epsilon1,print_f,file_path,MOL_RK4,ord,status,totalnodes,mynode,request,communication );
     
-    
+   
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>(stop - start);
     cout << "Time taken by processor "<<mynode<<" : "<< duration.count()/1000000. << " seconds" << endl;
