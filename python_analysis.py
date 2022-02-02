@@ -162,6 +162,13 @@ def m1_solution_Psi(r,t,a,ds):
 
 
 # MODEL 1 WITH CHARACTERISTIC VARIABLES, THEORETICAL SOLUTIONS 
+def m1_solution_PsiPlus(R,T,A,ds):
+    B = 1
+    J = R-T
+    K = np.exp(4*ds**2*R*T)
+    L = R+T
+    return( A*B*(J-J*K-4*ds**2*L**2*R)/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R)))
+
 
 def m1_solution_PsiPlus(R,T,A,ds):
     B = 1
@@ -387,15 +394,19 @@ def animate_one_field(field_number,h_ind,big_DF_ind,model,data,big_DF,ylim_inf,y
         fig, animate, interval=50, blit=True, save_count=number_steps-1)
     ani.save(data_name)
     
-def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,ylim_inf,ylim_sup,number_steps,domain_lenght):
+def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,ylim_inf,ylim_sup,number_steps,domain_lenght,times):
     data_name = "./data/"+model+"/data"+str(data[0])+"/fields.mp4"
     fig = plt.figure()
-    ax1 = plt.axes(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
+    ax1 = fig.add_subplot(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
     line, = ax1.plot([], [])
     plt.xlabel('x')
     plt.ylabel('fields')
     plotlays = [fields_to_print]
     lines = []
+    # Add text annotation and create variable reference
+    temp = ax1.text((domain_lenght+float(dx)*gr)/2, -ylim_sup, 'time0', ha='right', va='top', fontsize=24)
+    
+    
     for index in (fields_to_print):
         lobj = ax1.plot([],[],'-.',lw=3,alpha=0.6,label=index)[0]
         lines.append(lobj)
@@ -414,6 +425,7 @@ def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,d
         return lines
 
     def animate(i):
+        temp.set_text('time '+str(int(times[i])) )
         for n,j in enumerate (fields_to_print):
             x[n] = big_DF[big_DF_ind][h_ind][0]['x']
             y[n] = big_DF[big_DF_ind][h_ind][i][j]
@@ -423,12 +435,13 @@ def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,d
         #for index in range(0,1):
         for lnum,line in enumerate(lines):
             line.set_data(xlist[lnum], ylist[lnum]) # set data for each line separately. 
-
         return lines
 
     # call the animator.  blit=True means only re-draw the parts that have changed.
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=int(number_steps-1), interval=75, blit=True)
+                                   frames=number_steps-1, interval=75, blit=True)
+    # Ensure the entire plot is visible
+    fig.tight_layout()
     plt.legend()
     plt.grid()
     plt.show()
@@ -457,7 +470,7 @@ def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big
         y.append([ big_DF[big_DF_ind][h_ind][0][i]])
 
     x.append([big_DF[0][h_ind][0]['x']]),
-    y.append([theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[0],float(amplitude_vector[big_DF_ind]),1)])
+    y.append([theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[0],float(amplitude_vector[big_DF_ind]),1,1/5,5)])
     #y.append([hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[0],1,1/5,5)])
 
     def init():
@@ -475,7 +488,7 @@ def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big
             x[n] = big_DF[big_DF_ind][h_ind][0]['x']
             y[n] = big_DF[big_DF_ind][h_ind][i][j]
         x[1] = big_DF[big_DF_ind][h_ind][0]['x']
-        y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]),1)
+        y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]),1,1/5,5)
         #y[1] = hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[i],1,1/5,5)
 
 

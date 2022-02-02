@@ -12,7 +12,7 @@ typedef double (*artificial_dissipation_function)(double epsilon,int ord,std::ve
 
 typedef std::vector<double (*)(std::vector<double>,int,double)>  derivative_vector;
 
-typedef void(*ghost_point_extrapolation_function)(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax);
+typedef void(*ghost_point_extrapolation_function)(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param);
 
 typedef double (*evolution_function)(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl);
 
@@ -24,10 +24,9 @@ typedef vector<vector<double>>(*one_step_function)(std::vector< std::vector<doub
 
 typedef void(*method_of_line_function)(std::vector< std::vector<double> > fields_vect,one_step_function one_step, double dx, std::vector<double> param, double dt, double interval,    double dmin,    double dmax,std::vector< evolution_function > R_vect,std::vector< boundary_conditions_function > bc, double step_to_save,print_function print_f,int gl, int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2,double epsilon,int ord,derivative_vector Dx,string file_path ,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication);
 
-typedef vector<vector<double>>(*initialization_function)(double d_min,double d_max,double dx,std::vector<double(*)(double,double)> funcs,double param_ic,int gl, int gr,int ord);
+typedef vector<vector<double>>(*initialization_function)(double d_min,double d_max,double dx,std::vector<double(*)(double,double,vector<double>)> funcs,double param_ic,vector<double> param,int gl, int gr,int ord);
 
-
-void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vector<double(*)(double, double)>& initial_conditions, initialization_function initialize_fields, double dmin, double dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, derivative_vector & Dx ,std::vector< evolution_function > & R_vector, std::vector< boundary_conditions_function > & b_func,  std::vector<double> & parameters, one_step_function one_step, int gl,int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2, vector<double> epsilon1,print_function print_f, string file_path, method_of_line_function MOL_RK4,int ord,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
+void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vector<double(*)(double, double,vector<double>)>& initial_conditions, initialization_function initialize_fields, double dmin, double dmax, double h1, double h2, double h3, double dt1, double dt2, double dt3, double integration_interval,int step_to_save, derivative_vector & Dx ,std::vector< evolution_function > & R_vector, std::vector< boundary_conditions_function > & b_func,  std::vector<double> & parameters, one_step_function one_step, int gl,int gr,ghost_point_extrapolation_function ghost_point_extrapolation,artificial_dissipation_function artificial_diss_2, vector<double> epsilon1,print_function print_f, string file_path, method_of_line_function MOL_RK4,int ord,MPI_Status status, int totalnodes, int mynode,MPI_Request request, communication_function communication)
 {
     ofstream myfile2;
     //myfile2.open (file_path+"name_of_file");
@@ -48,9 +47,9 @@ void multiple_parameters_run(std::vector<double>& parameters_ic_vector, std::vec
             
             
             
-            std::vector< std::vector<double> > fields_vect1 = initialize_fields(dmin,dmax,h1,initial_conditions,parameters_ic_vector[l],gl,gr,ord);     
-            std::vector< std::vector<double> > fields_vect2 = initialize_fields(dmin,dmax,h2,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
-            std::vector< std::vector<double> > fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],gl,gr,ord);
+            std::vector< std::vector<double> > fields_vect1 = initialize_fields(dmin,dmax,h1,initial_conditions,parameters_ic_vector[l],parameters,gl,gr,ord);     
+            std::vector< std::vector<double> > fields_vect2 = initialize_fields(dmin,dmax,h2,initial_conditions,parameters_ic_vector[l],parameters,gl,gr,ord);
+            std::vector< std::vector<double> > fields_vect3 = initialize_fields(dmin,dmax,h3,initial_conditions,parameters_ic_vector[l],parameters,gl,gr,ord);
             // setting the output variables
             //cout<<"\n lun vec \n"<<endl;
             string name_file = "processor_"+to_string(mynode)+"_ampl_"+to_string(parameters_ic_vector[l])+"_eps"+to_string(epsilon1[e])+"_dx_"+to_string(h1)+"steps"+to_string(step_to_save)+"last_time"+to_string(integration_interval)+".csv";
@@ -92,7 +91,7 @@ void MOL_RK4(std::vector< std::vector<double> > fields_vect,one_step_function on
     int N = fields_vect.size();
     for (int j=0; j <N; j++)
     {
-        ghost_point_extrapolation(fields_vect, 0,dx,dt,j,gl,gr,dmin,dmax);
+        ghost_point_extrapolation(fields_vect, 0,dx,dt,j,gl,gr,dmin,dmax,param);
     }
     for (double t=0;t<interval+dt/1.5;t=double(t)+double(dt)) 
     {        
@@ -157,7 +156,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     
     for (int j=0; j <N; j++)
     {
-        ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
+        ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax,param);
     }
     
     // k1 building
@@ -191,7 +190,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     // computing the argument for the next coefficient k2
         if(mynode==0)
         {
-            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
+            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax,param);
             for (int i=0;i<index_dmax_local+1;i++)
             {
                 support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
@@ -199,7 +198,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
         }
         if(mynode==totalnodes-1)
         {
-            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
+            ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax,param);
             for (int i=index_dmin_local-1;i<S;i++)
             {
                 support_k1[j][i] = (k1[j][i])*dt/2. + fields_vect[j][i];// + artificial_diss(epsilon,ord,fields_vect,j,i,dx,dt/2);
@@ -333,7 +332,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     }
     for (int j=0; j <N; j++)
     {
-        ghost_point_extrapolation(k4, t+dt,dx,dt,j,gl,gr,dmin,dmax);
+        ghost_point_extrapolation(k4, t+dt,dx,dt,j,gl,gr,dmin,dmax,param);
     }
     // we create a new vector that contains all the new fields. It is a support vector that will be swapped with the old one
     
@@ -376,7 +375,7 @@ vector<vector<double>> onestep_RK4_1(std::vector< std::vector<double> > fields_v
     {
         if(mynode==0 || mynode==totalnodes-1)
         {
-            ghost_point_extrapolation(new_fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
+            ghost_point_extrapolation(new_fields_vect, t,dx,dt,j,gl,gr,dmin,dmax,param);
         }
     }
     //cout<<"old "<<fields_vect.size()<<"new "<<new_fields_vect.size()<<endl;
@@ -605,7 +604,7 @@ double model1_charvar_compactified_Psi_Chi(int ind_field,int ind_space,std::vect
     double A = -r*r+s*s;
     double G = pow(r,4)+pow(s,4)+r*r*s*s*(s*s-2.);
     
-    return ( 0.5*(fields_vect[1][ind_space]+A*fields_vect[0][ind_space]/2/sqrt(G)));
+    return ( 0.5*fields_vect[1][ind_space]+A*fields_vect[0][ind_space]/2/sqrt(G));
 }
 
 double model1_charvar_compactified_PsiPlus_Chi(int ind_field,int ind_space,std::vector<std::vector<double>> fields_vect,double dx,double dmin,std::vector<double> param, double t,std::vector<double (*)(std::vector<double>,int,double)> Dx,artificial_dissipation_function artificial_diss,double epsilon,int ord,double dt, int gl)
@@ -700,24 +699,24 @@ double model3_phi2(int ind_field,int ind_space,std::vector<std::vector<double>> 
 
 // ---------- INITIAL DATA AND INITIALIZATION OF VECTORS --------------- //
 
-double initial_line(double x,double init_param) 
+double initial_line(double x,double init_param, vector<double> parameter) 
 {
     return(x);
 }
 
-double initial_unity(double x,double init_param) 
+double initial_unity(double x,double init_param, vector<double> parameter) 
 {
     return(1.);
 }
 
-double initial_null(double x,double init_param) 
+double initial_null(double x,double init_param, vector<double> parameter) 
 {
     double a = 0.;
     return(a);
 }
 
 
-double initial_gauss(double x,double init_param)
+double initial_gauss(double x,double init_param, vector<double> parameter) 
 {
     double dev_std = 1.;
     return( init_param*exp(-pow((x*dev_std),2)) );
@@ -729,15 +728,15 @@ double initial_gauss_m3(double x, double init_param)
     return( init_param*exp(-pow((x*dev_std),2)) );
 }
 
-double initial_gauss_PHI(double x,double init_param)
+double initial_gauss_PHI(double x,double init_param, vector<double> parameter) 
 {
     double dev_std = 1.;
     return( -2.*x*dev_std*dev_std*init_param*exp(-pow((x*dev_std),2)) );
 }
 
-double initial_gauss_PHI_compactified(double x,double init_param)
+double initial_gauss_PHI_compactified(double x,double init_param, vector<double> parameter) 
 {
-    double s = 1;
+    double s = param[0];
     double rate_of_square = pow(x,2)/pow(s,2);
     double R = x/(1-rate_of_square);
     if(x!=s)
@@ -750,9 +749,9 @@ double initial_gauss_PHI_compactified(double x,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified(double x,double init_param)
+double initial_gauss_phi_compactified(double x,double init_param, vector<double> parameter) 
 {
-    double s = 1;
+    double s = param[0];
     double dev_std = 4;
     double rate_of_square = pow(dev_std*x,2)/pow(s,2);
     double R = x/(1-rate_of_square);
@@ -769,9 +768,9 @@ double initial_gauss_phi_compactified(double x,double init_param)
 
 // ------ hyperboloidal compactification and Chi function rescaling  for the wave equation------ //
 
-double initial_gauss_PI_compactified_Chi1_we(double r,double init_param)
+double initial_gauss_PI_compactified_Chi1_we(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
+    double s = param[0];
     double dev_std = 1./5.;
     double ds_sq = dev_std*dev_std;
     double rate_of_square = pow(r,2)/pow(s,2);
@@ -795,9 +794,9 @@ double initial_gauss_PI_compactified_Chi1_we(double r,double init_param)
         return(1./2.*(-A*exp(-C)+2.*A*C*exp(-C)));
     }
 }
-double initial_gauss_PHI_compactified_Chi_we(double x,double init_param)
+double initial_gauss_PHI_compactified_Chi_we(double x,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
+    double s = param[0];
     double dev_std = 1./5.;
     double rate_of_square = pow(x,2)/pow(s,2);
     double R = x/(1-rate_of_square);
@@ -814,9 +813,9 @@ double initial_gauss_PHI_compactified_Chi_we(double x,double init_param)
     }
 }
 
-double initial_gauss_PHI_compactified_Chi1_we(double r,double init_param)
+double initial_gauss_PHI_compactified_Chi1_we(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
+    double s = param[0];
     double dev_std = 1./5.;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/(1-rate_of_square);
@@ -841,9 +840,9 @@ double initial_gauss_PHI_compactified_Chi1_we(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi_we(double r,double init_param)
+double initial_gauss_phi_compactified_Chi_we(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
+    double s = param[0];
     double dev_std = 1./5.;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/(1-rate_of_square);
@@ -859,9 +858,9 @@ double initial_gauss_phi_compactified_Chi_we(double r,double init_param)
     }
 }
 
-double initial_gauss_phi_compactified_Chi1_we(double r,double init_param)
+double initial_gauss_phi_compactified_Chi1_we(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
+    double s = param[0];
     double dev_std = 1./5.;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/(1-rate_of_square);
@@ -884,7 +883,7 @@ double initial_gauss_phi_compactified_Chi1_we(double r,double init_param)
 
 // -------- MODEL1 char variable, flat space -------- //
 
-double initial_gauss_PsiPlus_charvar_m1(double r,double init_param)
+double initial_gauss_PsiPlus_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
     double a = init_param;
     double b = 1;
@@ -892,7 +891,7 @@ double initial_gauss_PsiPlus_charvar_m1(double r,double init_param)
     return(-(2*a*b*ds*ds*r)/(a*b+exp(ds*ds*r*r)));
 }
 
-double initial_gauss_PsiMinus_charvar_m1(double r,double init_param)
+double initial_gauss_PsiMinus_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
     double a = init_param;
     double b = 1;
@@ -900,7 +899,7 @@ double initial_gauss_PsiMinus_charvar_m1(double r,double init_param)
     return((2*a*b*ds*ds*r)/(a*b+exp(ds*ds*r*r)));
 }
 
-double initial_gauss_Psi_charvar_m1(double r,double init_param)
+double initial_gauss_Psi_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
     double a = init_param;
     double b = 1;
@@ -910,10 +909,10 @@ double initial_gauss_Psi_charvar_m1(double r,double init_param)
 
 // ------ hyperboloidal compactification and Chi function rescaling for the Model 1 equations  with char variables------ //
 
-double initial_gauss_Psi_compactified_Chi_charvar_m1(double r,double init_param)
+double initial_gauss_Psi_compactified_Chi_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
-    double dev_std = 1./5.;
+    double s = parameter[0];
+    double dev_std = parameter[1];
     double ds_sq = dev_std*dev_std;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/(1-rate_of_square);
@@ -936,10 +935,10 @@ double initial_gauss_Psi_compactified_Chi_charvar_m1(double r,double init_param)
     }
 }
 
-double initial_gauss_PsiPlus_compactified_Chi_charvar_m1(double r,double init_param)
+double initial_gauss_PsiPlus_compactified_Chi_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
-    double dev_std = 1./5.;
+    double s = parameter[0];
+    double dev_std = parameter[1];
     double ds_sq = dev_std*dev_std;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/((double)1.-rate_of_square);
@@ -965,10 +964,10 @@ double initial_gauss_PsiPlus_compactified_Chi_charvar_m1(double r,double init_pa
     }
 }
 
-double initial_gauss_PsiMinus_compactified_Chi_charvar_m1(double r,double init_param)
+double initial_gauss_PsiMinus_compactified_Chi_charvar_m1(double r,double init_param, vector<double> parameter) 
 {
-    double s = 5.;
-    double dev_std = 1./5.;
+    double s = parameter[0];
+    double dev_std = parameter[1];
     double ds_sq = dev_std*dev_std;
     double rate_of_square = pow(r,2)/pow(s,2);
     double R = r/(1-rate_of_square);
@@ -997,7 +996,7 @@ double initial_gauss_PsiMinus_compactified_Chi_charvar_m1(double r,double init_p
 // ------  ------  ------  ------  ------  ------  ------  ------  ------  ------
 
 
-double initial_parab_function(double x,double init_param)
+double initial_parab_function(double x,double init_param, vector<double> parameter) 
 {
     double a = -2*pow(x,2);
     return(a);
@@ -1010,7 +1009,7 @@ double line(double x,double t)
 
 
 // initialize the fields at time zero
-vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std::vector<double(*)(double,double)> funcs,double param_ic,int gl, int gr,int ord)
+vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std::vector<double(*)(double,double,vector<double>)> funcs,double param_ic,vector<double> param,int gl, int gr,int ord)
 {
     
      if (ord>gl)
@@ -1033,7 +1032,7 @@ vector<vector<double>> initialize_fields(double d_min,double d_max,double dx,std
         {
             double val = d_min+dx*(j-gl);
             //cout<< j <<"\n";
-            new_vect[n][j] = funcs[n](val,param_ic);
+            new_vect[n][j] = funcs[n](val,param_ic,param);
         }
     }
     return(new_vect);
@@ -1567,7 +1566,7 @@ double first_der_second_order_forward(std::vector<double> vector,int i,double dx
     
 //-------------- GHOST POINTS --------------//
 
-void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     
     // attachment of the ghost points to the boundary of the function
@@ -1582,7 +1581,7 @@ void ghost_point_extrapolation_1_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     // computation of the ghost points via interpolation
     // we find the x vector and the relative y vector values of the subsections starting from the boundaries
@@ -1627,7 +1626,7 @@ void ghost_point_extrapolation1(std::vector<std::vector<double>> &field_vect,dou
 }
 
 
-void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int last_ind = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1643,7 +1642,7 @@ void ghost_point_extrapolation2_TEM(std::vector<std::vector<double>> &field_vect
     }
 }
 
-void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int last_ind = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1659,7 +1658,7 @@ void ghost_point_extrapolation_2_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation_4_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     ;
     // attachment of the ghost points to the boundary of the function
@@ -1675,7 +1674,7 @@ void ghost_point_extrapolation_4_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     ;
     // attachment of the ghost points to the boundary of the function
@@ -1691,7 +1690,7 @@ void ghost_point_extrapolation_6_ord(std::vector<std::vector<double>> &field_vec
     }
 }
 
-void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
         
     // attachment of the ghost points to the boundary of the function
@@ -1707,7 +1706,7 @@ void ghost_point_extrapolation3(std::vector<std::vector<double>> &field_vect,dou
     }
 }
 
-void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1736,7 +1735,7 @@ void ghost_point_extrapolation_1_ord_spherical_symmetry(std::vector<std::vector<
     
 }
 
-void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1764,7 +1763,7 @@ void ghost_point_extrapolation_4_ord_spherical_symmetry(std::vector<std::vector<
     }
 }
 
-void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1793,7 +1792,7 @@ void ghost_point_extrapolation_1_ord_TEM_spherical_symmetry(std::vector<std::vec
     
 }
 
-void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -1821,7 +1820,7 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry(std::vector<std::vec
     }
 }
 
-void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     
     // attachment of the ghost points to the boundary of the function
@@ -1857,10 +1856,10 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar(std::vector<
     }
 }
 
-void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar_Chi(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar_Chi(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
-    double s = 5.;
+    double s = param[0];
     double r;
     double Chi;
     double R;
@@ -1904,7 +1903,7 @@ void ghost_point_extrapolation_2_ord_TEM_spherical_symmetry_charvar_Chi(std::vec
     
 }
 
-void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // computation of the ghost points via interpolation
@@ -1973,7 +1972,7 @@ void ghost_point_extrapolation_2_ord_spline_spherical_symmetry(std::vector<std::
     
 }
 
-void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -2001,7 +2000,7 @@ void ghost_point_extrapolation_4_ord_spherical_symmetry_rescaled(std::vector<std
     }
 }
 
-void ghost_point_extrapolation_6_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax)
+void ghost_point_extrapolation_6_ord_spherical_symmetry(std::vector<std::vector<double>> &field_vect,double t,double dx, double dt, int j,int gl, int gr,double dmin,double dmax,vector<double> param)
 {
     int S = field_vect[j].size();
     // attachment of the ghost points to the boundary of the function
@@ -2049,7 +2048,6 @@ double artificial_dissipation_4(double epsilon,int ord,std::vector<std::vector<d
 
 double artificial_dissipation_2_ani(double epsilon,int ord,std::vector<std::vector<double>> copy_fields_vect,int j,int i,double dx,double dt)      
 {
-    //cout<<"epsilon "<<epsilon<<"| order "<<order<<"| dx "<<dx<<endl;
     return(-epsilon*pow(dx,-1.)*pow(-1,ord)/4.*(copy_fields_vect[j][i+2]-4.*copy_fields_vect[j][i+1]+6.*copy_fields_vect[j][i]+copy_fields_vect[j][i-2]-4.*copy_fields_vect[j][i-1]) );
 }
     
