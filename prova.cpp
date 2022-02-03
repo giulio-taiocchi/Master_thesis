@@ -65,13 +65,13 @@ void communication(fields_vector &fields_vect,grid Grid,int n,vector<int> index_
 
 void ghost_point_extrapolation_4_ord(fields_vector &field_vect,grid Grid,double t,vector<double> dx, double dt, int j,vector<int> gl, vector<int> gr,vector<double> dmin,vector<double> dmax);
 
-// ------------------main function ------------------ //
+// ------------------ MAIN FUNCTION ------------------ //
 
 int main(int argc, char **argv) 
 {
      auto start = high_resolution_clock::now();
     // set the decimal numbers precision of the output
-     cout.precision(10);
+    cout.precision(10);
     int mynode, totalnodes;
     MPI_Status status;
     MPI_Request request;
@@ -82,11 +82,11 @@ int main(int argc, char **argv)
    
     
     
-    vector<double> dmin {-1.5,-1.5,0};
-    vector<double> dmax {1.5,1.5,0};
-    vector<double> dx {0.1,0.1,0};
-    vector<int> gl = {2,2,0}, gr = {2,2,0}, ord = {2,2,0};
-    int step_to_save = 30;
+    vector<double> dmin {0,0,0};
+    vector<double> dmax {2,0,0};
+    vector<double> dx {0.1,0,0};
+    vector<int> gl = {2,0,0}, gr = {2,0,0}, ord = {2,0,0};
+    int step_to_save = 2;
     double dt = 0.05;
     double integration_interval = dt*step_to_save;
     
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
     
     vector<evolution_function> R_vect;
     R_vect.push_back(we_PHIx);
-    R_vect.push_back(we_PHIy);
+    R_vect.push_back(null_eq);
     R_vect.push_back(null_eq);
     R_vect.push_back(we_PI_2D);
     R_vect.push_back(we_phi);
@@ -245,10 +245,11 @@ fields_vector onestep_RK4_1(fields_vector fields_vect,grid Grid,vector<double> d
     {
         ghost_point_extrapolation(fields_vect, t,dx,dt,j,gl,gr,dmin,dmax);
     }*/
-    
+    //cout<<"index_dmax_local[1]="<<index_dmax_local[1]<<", k1[0] size "<<k1[0].size()<<endl;
     // k1 building
     for (int n=0; n <N; n++)
     {
+        
         // evualuating the "bulk" of k1
         // we have to consider the physical domain of the fields (so exclude the GP) and then exclude the boundaries value (+1 and -1)
         // we are also dividing the spatial domain in subdomains, in which each processor run in parallel
@@ -260,6 +261,8 @@ fields_vector onestep_RK4_1(fields_vector fields_vect,grid Grid,vector<double> d
             {
                 for(int k=index_dmin_local[2];k<index_dmax_local[2];k++)
                 {
+                    cout<<"n:"<<n<<" i:"<<i<< "j:"<<j<<" k:"<<k<<" from processor"<<mynode<<endl;
+                    
                     k1[n][i][j][k] = evo[n](n,i,j,k,fields_vect,Grid,dx,param,t,Dx,dt);
                     // !!! artificial dissipation !!!
                 }
@@ -284,19 +287,18 @@ fields_vector onestep_RK4_1(fields_vector fields_vect,grid Grid,vector<double> d
                 }
             }
         }
-        
     
     
         // processes COMMUNICATION blocks // since we usually use a centered second order finite difference scheme, 
         // each processor needs to receive (and send) the borders of its subdomain
-        
         communication(support_k1,Grid,n,index_dmax_local,index_dmin_local,mynode,totalnodes,status);
         // --------ghost_point_extrapolation(k1, t,dx,dt,j,gl,gr,dmin,dmax);
+
     }
-    
     // GP extrapolation for support_k1 vector
     ghost_point_extrapolation(support_k1,Grid,S,t,dx,dt,gl,gr,dmin,dmax,index_dmin_local,index_dmax_local,mynode,totalnodes);
     
+
     
     // k2 building
     for (int n=0; n <N; n++)
@@ -443,13 +445,14 @@ fields_vector onestep_RK4_1(fields_vector fields_vect,grid Grid,vector<double> d
     }
     //cout<<"old "<<fields_vect.size()<<"new "<<new_fields_vect.size()<<endl;
     */
+    
     ghost_point_extrapolation(new_fields_vect,Grid,S,t,dx,dt,gl,gr,dmin,dmax,index_dmin_local,index_dmax_local,mynode,totalnodes);
     return(new_fields_vect);
 }
 
 
 
-// initialize the grid function
+// --------------------- INITIALIZE THE GRID FUNCTION --------------------- // 
 grid initialization_grid(vector<double> dmin,vector<double> dmax,vector<double> dx,vector<int> gl, vector<int> gr,vector<int> ord,int dim)
 {
     
@@ -506,6 +509,8 @@ grid initialization_grid(vector<double> dmin,vector<double> dmax,vector<double> 
     return(Grid);
 } 
 
+// --------------------- INITIALIZE THE FIELDS --------------------- // 
+
 fields_vector initialize_fields(vector<double> dmin,vector<double> dmax,vector<double> dx,vector<int> gl, vector<int> gr,vector<int> ord,int dim,grid Grid,std::vector<double(*)(vector<double>,vector<double>)> funcs,vector<double> param_ic)
 {
     int N = funcs.size();
@@ -545,6 +550,7 @@ fields_vector initialize_fields(vector<double> dmin,vector<double> dmax,vector<d
     return(new_fields);
 } 
 
+// --------------------- PRINT FUNCTION --------------------- // 
 //fields_vect[n][i][j][k]
 //,MPI_Status status, int totalnodes, int mynode,MPI_Request request
 int print_f(fields_vector fields_vect, grid Grid, vector<double> dmin, vector<double> dmax, vector<double> dx, string name_file,string name_folder, vector<int> gl, vector<int> gr,int mynode, int totalnodes)
@@ -840,6 +846,9 @@ int print_f(fields_vector fields_vect, grid Grid, vector<double> dmin, vector<do
 
 }
 
+// --------------------- EVOLUTION FUNCTION --------------------- // 
+
+// ---- CARTESIAN COORDINATES ---- //
 double we_PI_3D(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
 {
     return(Dx[0](fields_vec,0,i,j,k,dx[0])+Dx[1](fields_vec,1,i,j,k,dx[1])+Dx[2](fields_vec,2,i,j,k,dx[2]));
@@ -875,9 +884,35 @@ double null_eq(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vec
     return(0);
 }
 
-// derivative operator
+// ---- POLAR COORDINATES ---- //
 
+double we_PI_1D_Polar(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
+{
+    return(3*(pow(Grid[i+1][j][k][0],2)*fields_vec[0][i+1][j][k]-pow(Grid[i-1][j][k][0],2)*fields_vec[0][i-1][j][k])/(pow(Grid[i+1][j][k][0],3)-pow(Grid[i-1][j][k][0],3)));
+}
 
+double we_PHIr_1D_Polar(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
+{
+    
+   return(Dx[0](fields_vec,3,i,j,k,dx[0]));
+}
+
+double we_PHItheta(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
+{
+    return(Dx[1](fields_vec,3,i,j,k,dx[1]));
+}
+
+double we_PHIpsi(int n,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
+{
+    return(Dx[2](fields_vec,3,i,j,k,dx[2]));
+}
+
+double we_phi_polar(int field_ind,int i, int j, int k,fields_vector fields_vec, grid Grid,vector<double> dx,std::vector<double> param,double t,derivatives_vector Dx,double dt )
+{
+    return(fields_vec[3][i][j][k]);
+}
+
+// --------------------- DERIVATIVE OPERATORS --------------------- // 
 double partial_dx(fields_vector fields_vec,int ind_field,int i, int j, int k,double dx)
 {
     return((fields_vec[ind_field][i+1][j][k]
@@ -895,7 +930,6 @@ double partial_dz(fields_vector fields_vec,int ind_field,int i, int j, int k,dou
     return((fields_vec[ind_field][i][j][k+1]
             -fields_vec[ind_field][i][j][k-1])  /2./dz);
 }
-
 
 
 // ---------------------- GHOST POINT EXTRAPOLATIONS ---------------------- //
@@ -916,6 +950,7 @@ void ghost_point_extrapolation_4_ord(fields_vector &field_vect,grid Grid, vector
         // we update the ghost point "before" the i=index_dmin_local plan[0]
         if(S[0]!=1)
         {
+            
             for(int i=gl[0]-1;i>=0;i--)
             {
                 for(int j=index_dmin_local[1];j<index_dmax_local[1];j++)
@@ -924,6 +959,7 @@ void ghost_point_extrapolation_4_ord(fields_vector &field_vect,grid Grid, vector
                     {
                         for(int n=0;n<N;n++)
                         {
+                            
                             field_vect[n][i][j][k] = field_vect[n][i+1][j][k]-(-25./12.*field_vect[n][i+1][j][k]+4.*field_vect[n][i+2][j][k]-3.*field_vect[n][i+3][j][k]+4./3.*field_vect[n][i+4][j][k]-1./4.*field_vect[n][i+5][j][k])+1./2.*(2.*field_vect[n][i+1][j][k]-5.*field_vect[n][i+2][j][k]+4.*field_vect[n][i+3][j][k]-field_vect[n][i+4][j][k]);
                         }
                     }
@@ -1037,6 +1073,7 @@ void ghost_point_extrapolation_4_ord(fields_vector &field_vect,grid Grid, vector
 
 void communication(fields_vector &fields_vect,grid Grid,int n,vector<int> index_dmax_local,vector<int> index_dmin_local,int mynode,int totalnodes,MPI_Status status)
 {
+    
     int dim_x = Grid.size(),dim_y=Grid[0].size(),dim_z=Grid[0][0].size();
    
     int nitems = 2*dim_y*dim_z;
@@ -1079,6 +1116,7 @@ void communication(fields_vector &fields_vect,grid Grid,int n,vector<int> index_
             
         }
     }
+    
     // LAST NODE COMMUNICATION //
     else if(mynode==totalnodes-1)
     {
@@ -1166,6 +1204,7 @@ void communication(fields_vector &fields_vect,grid Grid,int n,vector<int> index_
             
         }
     }
+    
 }
 
 
