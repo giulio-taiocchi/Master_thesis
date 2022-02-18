@@ -13,7 +13,6 @@ int main(int argc, char **argv)
     auto start = high_resolution_clock::now();
     // set the decimal numbers precision of the output
     cout.precision(10);
-     
     // calling the mpi initialization function
     int mynode, totalnodes;
     MPI_Status status;
@@ -23,7 +22,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &mynode);
     
     // declare the path where the input/output files are collected   
-    string file_path = "./data/hyperboloidal_model1/data0/"; 
+    string file_path = "./data/hyperboloidal_model3/data1/"; 
     // declare the name of the parameters file
     string parameter_file_name = "parameters_file_0";
     
@@ -58,35 +57,34 @@ int main(int argc, char **argv)
     
     // initial condition //
     
-    std::vector<double(*)(double, double)> initial_conditions;
-    initial_conditions.push_back(&initial_gauss_PsiPlus_compactified_Chi_charvar_m1);    //PI1
-    initial_conditions.push_back(&initial_gauss_PsiMinus_compactified_Chi_charvar_m1);        //PHI1       
-    initial_conditions.push_back(&initial_gauss_Psi_compactified_Chi_charvar_m1);        //phi1
-    //initial_conditions.push_back(&initial_null);        //PI2
-    //initial_conditions.push_back(&initial_null);        //PHI2       
-    //initial_conditions.push_back(&initial_unity);       //phi2
+    std::vector<double(*)(double, double,vector<double>)> initial_conditions;
+    initial_conditions.push_back(&initial_gauss_Psi1Plus_compactified_Chi_charvar_m3);    //PI1
+    initial_conditions.push_back(&initial_gauss_Psi1Minus_compactified_Chi_charvar_m3);        //PHI1       
+    initial_conditions.push_back(&initial_gauss_Psi1_compactified_Chi_charvar_m3);        //phi1
+    initial_conditions.push_back(&initial_gauss_Psi2Plus_compactified_Chi_charvar_m3);        //PI2
+    initial_conditions.push_back(&initial_gauss_Psi2Minus_compactified_Chi_charvar_m3);        //PHI2       
+    initial_conditions.push_back(&initial_gauss_Psi2_compactified_Chi_charvar_m3);       //phi2
     
     
     
     // setup of the diffential operator functions of the specific differential equation
     std::vector< evolution_function > R_vector;
-    R_vector.push_back(&model1_charvar_compactified_PsiPlus_Chi);
-    R_vector.push_back(&model1_charvar_compactified_PsiMinus_Chi);
-    R_vector.push_back(&model1_charvar_compactified_Psi_Chi);
-    //R_vector.push_back(&model3_PI2);
-    //R_vector.push_back(&model3_PHI2);
-    //R_vector.push_back(&model3_phi2);
-    
+    R_vector.push_back(&model3_charvar_compactified_PsiOnePlus_Chi);
+    R_vector.push_back(&model3_charvar_compactified_PsiOneMinus_Chi);
+    R_vector.push_back(&model3_charvar_compactified_PsiOne_Chi);
+    R_vector.push_back(&model3_charvar_compactified_PsiTwoPlus_Chi);
+    R_vector.push_back(&model3_charvar_compactified_PsiTwoMinus_Chi);
+    R_vector.push_back(&model3_charvar_compactified_PsiTwo_Chi);
    
     // setup of the boundary conditions 
-    int number_of_bc = 3;
+    int number_of_bc = 6;
     std::vector< boundary_conditions_function> b_func(number_of_bc);
-    b_func[0] = (&no_boundary_conditions_PsiPlus_charvar_hyp_Chi);
-    b_func[1] = (&no_boundary_conditions_PsiMinus_charvar_hyp_Chi);
-    b_func[2] = (&no_boundary_conditions_Psi_charvar_hyp_Chi);
-    //b_func[3] = (&radiative_outer_boundaries_PI2_m3);
-    //b_func[4] = (&no_boundary_conditions_PHI2_m3);
-    //b_func[5] = (&no_boundary_conditions_phi2_m3);
+    b_func[0] = (no_boundary_conditions_Psi1Plus_charvar_hyp_Chi_m3);
+    b_func[1] = (no_boundary_conditions_Psi1Minus_charvar_hyp_Chi_m3);
+    b_func[2] = (no_boundary_conditions_Psi1_charvar_hyp_Chi_m3);
+    b_func[3] = (no_boundary_conditions_Psi2Plus_charvar_hyp_Chi_m3);
+    b_func[4] = (no_boundary_conditions_Psi2Minus_charvar_hyp_Chi_m3);
+    b_func[5] = (no_boundary_conditions_Psi2_charvar_hyp_Chi_m3);
     
     
     // setting the time integration parameters
