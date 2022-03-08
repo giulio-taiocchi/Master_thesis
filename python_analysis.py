@@ -129,21 +129,12 @@ def model3_gaussian_solution(x,t,a):
  #   return(np.sin(np.log(1+(-a/4*(np.exp(-1*(t+x)**2)-np.exp(-1*(t-x)**2) )  /x) )))
     
     
-def hyperbolic_chi_we_solution(r,t,a,ds,s):
-    return(-a*np.exp(-ds**2*(-r+t)**2)+a*np.exp(-ds**2*(r**3+r*s**2-r**2*t+s**2*t)**2/(r**2-s**2)**2)*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/r) 
+#def hyperbolic_chi_we_solution(r,t,a,ds,s):
+    #return(-a*np.exp(-ds**2*(-r+t)**2)+a*np.exp(-ds**2*(r**3+r*s**2-r**2*t+s**2*t)**2/(r**2-s**2)**2)*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/r) 
  
 
 def hyperbolic_chi_we_solution(r,t,a,ds,s):
     return((a*(r-t)*np.exp(-1*ds**2*(r-t)**2)+a*(-r+t+2*r/(1-r**2/s**2))*np.exp(-1*ds**2*(-r+t+2*r/(1-r**2/s**2))**2 ))*(1+r**2/(1-r**2/s**2)**2)**0.5*(1-r**2/s**2)/2/r)
-
-
-def hyperbolic_chi_we_charvar_solution_PsiPlus(r,t,a,B,ds,s):
-    A = a
-    R = r/(1-r**2/s**2)
-    T = t+R-r
-    Chi = (1+R**2)**0.5
-    return(A*np.exp(-ds**2*(R+T)**2)*(R-T+np.exp(4*ds**2*R*T)*(-R+T-4*ds**2*R*(R+T)**2))*Chi**2/2/R**2)
-
 
 def spherical_we_solution(r,t,a,ds):
     return( (a*(r-t)*np.exp(-(ds*(r-t))**2)+a*(r+t)*np.exp(-(ds*(r+t))**2))/2/r )
@@ -156,26 +147,6 @@ def initialize_func_vect(func,domain,dx,t):
     for x in domain:
         vect.append(func(x,t))
     return(vect)
-
-def m1_solution_Psi(r,t,a,ds):
-    return( (a*(r-t)*np.exp(-(ds*(r-t))**2)+a*(r+t)*np.exp(-(ds*(r+t))**2))/2/r )
-
-
-# MODEL 1 WITH CHARACTERISTIC VARIABLES, THEORETICAL SOLUTIONS 
-def m1_solution_PsiPlus(R,T,A,ds):
-    B = 1
-    J = R-T
-    K = np.exp(4*ds**2*R*T)
-    L = R+T
-    return( A*B*(J-J*K-4*ds**2*L**2*R)/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R)))
-
-
-def m1_solution_PsiPlus(R,T,A,ds):
-    B = 1
-    J = R-T
-    K = np.exp(4*ds**2*R*T)
-    L = R+T
-    return( A*B*(J-J*K-4*ds**2*L**2*R)/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R)))
 
 # MODEL 1 WITH CHARACTERISTIC VARIABLES, hyperboloidal compactification, Chi rescaling, THEORETICAL SOLUTIONS 
 
@@ -208,7 +179,20 @@ def hyperbolic_chi_m1_charvar_solution_PsiMinus(r,t,a,B,ds,s):
     return(  A*B*(L+K*((-1+2*ds*J)*(1+2*ds*J)*R-T))*Chi )/(R*(A*B*(J*K+L)+2*np.exp(ds**2*L**2)*R))
 
 
-#-------------------- usefull functions for the pwer law scaling ---------------------#
+def hyperbolic_chi_m3_charvar_solution_Psi2Plus(r,t,a,B,C,ds,s):
+    A = a
+    R = r/(1-r**2/s**2)
+    T = t+R-r
+    Chi = (1+R**2)**0.5
+    J = R-T
+    K = np.exp(4*ds**2*R*T)
+    L = (R+T)
+    M = R**2+T**2
+    N = B*A*(np.exp(-ds**2*J**2)*J+np.exp(-ds**2*L**2)*L)/2/R
+    P = np.log(1+N)/C
+    Q = np.log(1+(A*np.exp(-ds**2*J**2)*J+A*np.exp(-ds**2*L**2)*L)/2/R)/C
+    return(A*np.exp(ds**2*J**2)*np.sin(Q)*(J*K+(-1+4*ds**2*L**2)*R+T)*Chi**2 )/R/(A*np.exp(ds**2*J**2)*(J*K+L)+2*np.exp(2*ds**2*M)*R)
+
 # big_DF[ind_run][ind_dx][ind_time][ind_field]
 def runs_maximums_vector(vectors,ind_dx,field):
     maximums_vector_run = []
@@ -342,7 +326,7 @@ def names_generator(data,epsilon,amplitude_vector,number_of_proc,model,dx,number
         for e in range(len(epsilon)):
             for a in range(len(amplitude_vector)):
                 for n in range(number_of_proc):
-                    names.append("./data/"+model+"/data"+str(i)+"/processor_"+                                                                                                str(n)+"_ampl_"+str(format(amplitude_vector[a],'.6f'))+"_eps"+str(format(epsilon[e],'.6f'))+"_dx_"+str(format(dx,'.6f'))+"steps"+str(number_steps)+"last_time"+str(format(range_time, '.6f'))+".csv") 
+                    names.append("./data"+str(i)+"/processor_"+                                                                                                str(n)+"_ampl_"+str(format(amplitude_vector[a],'.6f'))+"_eps"+str(format(epsilon[e],'.6f'))+"_dx_"+str(format(dx,'.6f'))+"steps"+str(number_steps)+"last_time"+str(format(range_time, '.6f'))+".csv") 
     return(names)
     
     
@@ -356,7 +340,7 @@ def plot_pw_convergence(big_DF,gl,gr,self_conv_test_vect_pw,model,data,field,eps
     plt.ylim(ylim_inf,ylim_sup)
     plt.xlabel('space')
     #plt.ylabel('(h1-h2)-4(h2-h3)')
-    data_name = "./data/"+model+"/data"+str(data[0])+"/"+field+"_epsilon"+str(epsilon[n_ind])+"dx"+str(dx)+"_pointwise_convergence.mp4"
+    data_name = "./data"+str(data[0])+"/"+field+"_epsilon"+str(epsilon[n_ind])+"dx"+str(dx)+"_pointwise_convergence.mp4"
 
     def animate1(i):
         line1.set_ydata(self_conv_test_vect_pw[i][0])  # update the data.
@@ -376,7 +360,7 @@ def plot_pw_convergence(big_DF,gl,gr,self_conv_test_vect_pw,model,data,field,eps
 def animate_one_field(field_number,h_ind,big_DF_ind,model,data,big_DF,ylim_inf,ylim_sup,number_steps):
     fig, ax = plt.subplots()
     field = field_number
-    data_name = "./data/"+model+"/data"+str(data[0])+"/field"+str(field)+".mp4"
+    data_name = "./data"+str(data[0])+"/field"+str(field)+".mp4"
     line, = ax.plot(big_DF[big_DF_ind][h_ind][0]['x'], big_DF[big_DF_ind][h_ind][0]['field'+str(field)])
     plt.ylim(ylim_inf,ylim_sup)
     plt.xlabel('space')
@@ -394,19 +378,15 @@ def animate_one_field(field_number,h_ind,big_DF_ind,model,data,big_DF,ylim_inf,y
         fig, animate, interval=50, blit=True, save_count=number_steps-1)
     ani.save(data_name)
     
-def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,ylim_inf,ylim_sup,number_steps,domain_lenght,times):
-    data_name = "./data/"+model+"/data"+str(data[0])+"/fields.mp4"
+def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,ylim_inf,ylim_sup,number_steps,domain_lenght):
+    data_name = "./data"+str(data[0])+"/fields.mp4"
     fig = plt.figure()
-    ax1 = fig.add_subplot(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
+    ax1 = plt.axes(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
     line, = ax1.plot([], [])
     plt.xlabel('x')
     plt.ylabel('fields')
     plotlays = [fields_to_print]
     lines = []
-    # Add text annotation and create variable reference
-    temp = ax1.text((domain_lenght+float(dx)*gr)/2, -ylim_sup, 'time0', ha='right', va='top', fontsize=24)
-    
-    
     for index in (fields_to_print):
         lobj = ax1.plot([],[],'-.',lw=3,alpha=0.6,label=index)[0]
         lines.append(lobj)
@@ -425,7 +405,6 @@ def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,d
         return lines
 
     def animate(i):
-        temp.set_text('time '+str(int(times[i])) )
         for n,j in enumerate (fields_to_print):
             x[n] = big_DF[big_DF_ind][h_ind][0]['x']
             y[n] = big_DF[big_DF_ind][h_ind][i][j]
@@ -435,21 +414,20 @@ def animate_multiple_fields(big_DF,fields_to_print,h_ind,big_DF_ind,model,data,d
         #for index in range(0,1):
         for lnum,line in enumerate(lines):
             line.set_data(xlist[lnum], ylist[lnum]) # set data for each line separately. 
+
         return lines
 
     # call the animator.  blit=True means only re-draw the parts that have changed.
     anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=number_steps-1, interval=75, blit=True)
-    # Ensure the entire plot is visible
-    fig.tight_layout()
+                                   frames=int(number_steps-1), interval=75, blit=True)
     plt.legend()
     plt.grid()
     plt.show()
     anim.save(data_name)
     
     
-def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,number_steps,domain_lenght,ylim_inf,ylim_sup,times,amplitude_vector):
-    data_name = "./data/"+model+"/data"+str(data[0])+"/theoretical_comparison.mp4"
+def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big_DF_ind,model,data,dx,gl,gr,number_steps,domain_lenght,ylim_inf,ylim_sup,times,amplitude_vector,ds,C):
+    data_name = "./data"+str(data[0])+"/theoretical_comparison.mp4"
     fig = plt.figure()
     ax1 = plt.axes(ylim=(ylim_inf,ylim_sup),xlim=(-float(dx)*gl,domain_lenght+float(dx)*gr))
     line, = ax1.plot([], [])
@@ -457,8 +435,9 @@ def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big
     plt.ylabel('fields')
     plotlays = [fields_to_print]
     lines = []
+    #t = time
     for index in (fields_to_print[0:-1]):
-        lobj = ax1.plot([],[],'+',lw=3,alpha=0.6,label=index)[0]
+        lobj = ax1.plot([],[],'+',lw=3,alpha=0.6,label=index+"time"+str(t))[0]
         lines.append(lobj)
     lobj = ax1.plot([],[],lw=3,alpha=0.6,label="theoretical solution")[0]
     lines.append(lobj)
@@ -470,8 +449,8 @@ def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big
         y.append([ big_DF[big_DF_ind][h_ind][0][i]])
 
     x.append([big_DF[0][h_ind][0]['x']]),
-    y.append([theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[0],float(amplitude_vector[big_DF_ind]),1,1/5,5)])
-    #y.append([hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[0],1,1/5,5)])
+    y.append([theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[0],float(amplitude_vector[big_DF_ind]),1,C,ds,domain_lenght)])
+    #y.append([hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[0],1,0.5,domain_lenght)])
 
     def init():
         for line in lines:
@@ -488,9 +467,9 @@ def theoretical_comparison(big_DF,theoretical_function,fields_to_print,h_ind,big
             x[n] = big_DF[big_DF_ind][h_ind][0]['x']
             y[n] = big_DF[big_DF_ind][h_ind][i][j]
         x[1] = big_DF[big_DF_ind][h_ind][0]['x']
-        y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]),1,1/5,5)
-        #y[1] = hyperbolic_chi_we_solution(big_DF[big_DF_ind][h_ind][0]['x'],times[i],1,1/5,5)
-
+        #y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]))
+        y[1] = theoretical_function(big_DF[big_DF_ind][h_ind][0]['x'],times[i],float(amplitude_vector[big_DF_ind]),1,C,ds,domain_lenght)
+        t = times[i]
 
         xlist = x
         ylist = y
