@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &mynode);
     
     // declare the path where the input/output files are collected   
-    string file_path = "./data/hyperboloidal_model3/data1/"; 
+    string file_path = "./data/hyperboloidal_model3/data3/"; 
     // declare the name of the parameters file
     string parameter_file_name = "parameters_file_0";
     
@@ -58,33 +58,19 @@ int main(int argc, char **argv)
     // initial condition //
     
     std::vector<double(*)(double, double,vector<double>)> initial_conditions;
-    initial_conditions.push_back(&initial_gauss_Psi1Plus_compactified_Chi_charvar_m3);    //PI1
-    initial_conditions.push_back(&initial_gauss_Psi1Minus_compactified_Chi_charvar_m3);        //PHI1       
-    initial_conditions.push_back(&initial_gauss_Psi1_compactified_Chi_charvar_m3);        //phi1
-    initial_conditions.push_back(&initial_gauss_Psi2Plus_compactified_Chi_charvar_m3);        //PI2
-    initial_conditions.push_back(&initial_gauss_Psi2Minus_compactified_Chi_charvar_m3);        //PHI2       
-    initial_conditions.push_back(&initial_gauss_Psi2_compactified_Chi_charvar_m3);       //phi2
+    initial_conditions_setting_hyp_Chi_m3_charvar_null_time_derivative(initial_conditions);
     
     
     
     // setup of the diffential operator functions of the specific differential equation
     std::vector< evolution_function > R_vector;
-    R_vector.push_back(&model3_charvar_compactified_PsiOnePlus_Chi);
-    R_vector.push_back(&model3_charvar_compactified_PsiOneMinus_Chi);
-    R_vector.push_back(&model3_charvar_compactified_PsiOne_Chi);
-    R_vector.push_back(&model3_charvar_compactified_PsiTwoPlus_Chi);
-    R_vector.push_back(&model3_charvar_compactified_PsiTwoMinus_Chi);
-    R_vector.push_back(&model3_charvar_compactified_PsiTwo_Chi);
-   
+    evo_vector_setting_hyp_m3_Chi_charvar(R_vector);
+    
+    
     // setup of the boundary conditions 
     int number_of_bc = 6;
     std::vector< boundary_conditions_function> b_func(number_of_bc);
-    b_func[0] = (no_boundary_conditions_Psi1Plus_charvar_hyp_Chi_m3);
-    b_func[1] = (no_boundary_conditions_Psi1Minus_charvar_hyp_Chi_m3);
-    b_func[2] = (no_boundary_conditions_Psi1_charvar_hyp_Chi_m3);
-    b_func[3] = (no_boundary_conditions_Psi2Plus_charvar_hyp_Chi_m3);
-    b_func[4] = (no_boundary_conditions_Psi2Minus_charvar_hyp_Chi_m3);
-    b_func[5] = (no_boundary_conditions_Psi2_charvar_hyp_Chi_m3);
+    bc_vector_setting_hyp_m3_Chi_charvar(b_func);
     
     
     // setting the time integration parameters
@@ -109,8 +95,9 @@ int main(int argc, char **argv)
     
    
     auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-    cout << "Time taken by processor "<<mynode<<" : "<< duration.count()/1000000. << " seconds" << endl;
+    auto duration = duration_cast<seconds>(stop - start);
+    cout << "Time taken by processor "<<mynode<<" : "<< duration.count()/60. << " minutes" << endl;
+    
     MPI_Finalize();
     
     return 0;
